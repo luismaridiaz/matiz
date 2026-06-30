@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>MATIZ · Colorimetría de piel y maquillaje</title>
+  <script>
+    // Suprimir aviso de desarrollo de Babel (solo informativo, no afecta al funcionamiento)
+    const _cw = console.warn;
+    console.warn = function(...a) {
+      if (a[0] && typeof a[0] === 'string' && a[0].includes('Babel')) return;
+      _cw.apply(console, a);
+    };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #root { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+
+// ── FITZPATRICK ───────────────────────────────────────────────
+const FITZ = [
+  {n:"I",  col:"#F5DCCC", label:"Muy clara",    desc:"Siempre se quema · nunca se broncea",  sun:"Pelirroja/rubia, pecas frecuentes"},
+  {n:"II", col:"#EBBF9A", label:"Clara",         desc:"Se quema con facilidad · broncea poco", sun:"Rubio/castaño claro, ojos claros"},
+  {n:"III",col:"#D4956A", label:"Media",         desc:"A veces se quema · broncea gradual",    sun:"Castaño, ojos marrones o verdes"},
+  {n:"IV", col:"#B07040", label:"Oliva-morena",  desc:"Raramente se quema · broncea bien",     sun:"Piel oliva, mediterránea"},
+  {n:"V",  col:"#7A4828", label:"Oscura",        desc:"Muy raramente se quema · broncea mucho",sun:"Oriente Medio, Asia sur, Latinoamérica"},
+  {n:"VI", col:"#3C1F10", label:"Muy oscura",    desc:"Nunca se quema · broncea intensamente", sun:"África subsahariana, piel más oscura"},
+];
+const fitzDepth = f => ["I","II"].includes(f)?"clara":["III","IV"].includes(f)?"media":"oscura";
+
+// ── QUIZ (4 preguntas — profundidad vía Fitzpatrick) ──────────
+const QUIZ = [
+  {id:"venas",   q:"Mira las venas de tu muñeca bajo luz natural",
+   ops:[{l:"Verdes o verde-amarillentas",v:"calido",e:"🟢"},{l:"Azules o azul-violáceas",v:"frio",e:"🔵"},{l:"Mezcla de ambas",v:"neutro",e:"🟣"}]},
+  {id:"joyeria", q:"¿Qué metal te favorece más en el rostro?",
+   ops:[{l:"El oro me sienta mejor",v:"calido",e:"🥇"},{l:"La plata me sienta mejor",v:"frio",e:"🥈"},{l:"Ambos me quedan igual",v:"neutro",e:"✨"}]},
+  {id:"papel",   q:"Acerca un papel blanco a tu rostro. Tu piel se ve...",
+   ops:[{l:"Amarillenta, dorada o melocotón",v:"calido",e:"🌕"},{l:"Rosada, azulada o sin color",v:"frio",e:"🌸"},{l:"Neutra, sin sesgo claro",v:"neutro",e:"⚪"}]},
+  {id:"contraste",q:"Contraste entre piel, cabello y ojos",
+   ops:[{l:"Muy alto — combinación dramática",v:"alto",e:"🌓"},{l:"Medio — diferencia moderada",v:"medio",e:"🌗"},{l:"Bajo — todo en la misma gama",v:"bajo",e:"🌕"}]},
+];
+
+const calcSeason = (a, fitz) => {
+  const v=[a.venas,a.joyeria,a.papel];
+  const c={}; v.forEach(x=>c[x]=(c[x]||0)+1);
+  const sub=Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0];
+  const ct=a.contraste, p=fitzDepth(fitz||"III");
+  if(sub==="calido"&&p==="clara"&&ct!=="alto") return "primavera";
+  if(sub==="calido"&&p==="media"&&ct==="bajo")  return "primavera";
+  if(sub==="frio"  &&ct!=="alto")               return "verano";
+  if(sub==="calido"&&(p==="media"||p==="oscura")) return "otono";
+  if(sub==="calido"&&ct==="alto")               return "otono";
+  if(sub==="frio"  &&ct==="alto")               return "invierno";
+  if(sub==="neutro"&&ct==="alto")               return "invierno";
+  if(sub==="neutro"&&p==="oscura")              return "otono";
+  return "verano";
+};
+
+// ── FACE SVGs (estilo piel-app-v4) ───────────────────────────
+const ST="#9e8a76", FL="rgba(158,138,118,0.13)";
+const FACE_SVG={
+  ovalado:    `<svg width="38" height="50" viewBox="0 0 38 50"><path d="M19 3 C11 3 4 10 4 23 C4 36 10 47 19 47 C28 47 34 36 34 23 C34 10 27 3 19 3Z" fill="${FL}" stroke="${ST}" stroke-width="1.6"/><path d="M11 8 Q19 2 27 8" fill="none" stroke="${ST}" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  redondo:    `<svg width="42" height="44" viewBox="0 0 42 44"><path d="M21 4 C11 4 4 12 4 22 C4 33 11 41 21 41 C31 41 38 33 38 22 C38 12 31 4 21 4Z" fill="${FL}" stroke="${ST}" stroke-width="1.6"/><path d="M12 9 Q21 3 30 9" fill="none" stroke="${ST}" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  cuadrado:   `<svg width="40" height="46" viewBox="0 0 40 46"><path d="M8 10 C8 6 32 6 32 10 L34 36 C34 41 28 44 20 44 C12 44 6 41 6 36 Z" fill="${FL}" stroke="${ST}" stroke-width="1.6"/><path d="M8 10 Q20 4 32 10" fill="none" stroke="${ST}" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  corazon:    `<svg width="42" height="48" viewBox="0 0 42 48"><path d="M6 8 C6 4 36 4 36 8 L38 22 C38 30 30 36 21 46 C12 36 4 30 4 22 Z" fill="${FL}" stroke="${ST}" stroke-width="1.6"/><path d="M6 8 Q21 2 36 8" fill="none" stroke="${ST}" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  rectangular:`<svg width="34" height="52" viewBox="0 0 34 52"><path d="M9 8 C9 5 25 5 25 8 L27 42 C27 47 22 50 17 50 C12 50 7 47 7 42 Z" fill="${FL}" stroke="${ST}" stroke-width="1.6"/><path d="M9 8 Q17 3 25 8" fill="none" stroke="${ST}" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  diamante:   `<svg width="44" height="50" viewBox="0 0 44 50"><path d="M22 4 C28 4 40 14 40 24 C40 34 32 44 22 47 C12 44 4 34 4 24 C4 14 16 4 22 4Z" fill="${FL}" stroke="${ST}" stroke-width="1.6"/><path d="M13 10 Q22 4 31 10" fill="none" stroke="${ST}" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+};
+const FACE_SHAPES=[
+  {id:"ovalado",    label:"Ovalado",     desc:"Frente ligeramente más ancha, pómulos marcados.",
+   tec:["Forma 'universal' — cualquier técnica funciona.","Rubor suave en arco desde manzanas hacia sienes.","Potencia tu rasgo más especial."]},
+  {id:"redondo",    label:"Redondo",     desc:"Ancho y largo similares, mejillas llenas.",
+   tec:["Contouring en sienes y mandíbula para dar ángulo.","Rubor en diagonal ascendente hacia la sien.","Iluminador en centro vertical. Acabado mate en mejillas."]},
+  {id:"cuadrado",   label:"Cuadrado",    desc:"Ángulos de mandíbula marcados, frente ancha.",
+   tec:["Contouring en esquinas de mandíbula.","Rubor circular en manzanas, difuminado hacia arriba.","Iluminador central en frente y mentón."]},
+  {id:"corazon",    label:"Corazón",     desc:"Frente ancha, mentón puntiagudo.",
+   tec:["Contouring en sienes para reducir frente.","Rubor horizontal en manzanas.","Labios más oscuros equilibran la parte inferior."]},
+  {id:"rectangular",label:"Rectangular", desc:"Cara más larga que ancha.",
+   tec:["Contouring en frente superior y mentón.","Rubor horizontal para dar anchura.","Iluminador en pómulos lateralmente."]},
+  {id:"diamante",   label:"Diamante",    desc:"Pómulos muy anchos, frente y mentón estrechos.",
+   tec:["Iluminador en frente para ampliarla.","Rubor suave bajo los pómulos.","Labios definidos equilibran la parte inferior."]},
+];
+
+// ── SVG IRIS REALISTAS ────────────────────────────────────────
+const IRIS_SVG = {
+  azules:`<svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="ia" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#8BBFE0"/>
+      <stop offset="35%" stop-color="#5A9EC8"/>
+      <stop offset="70%" stop-color="#3A7DB8"/>
+      <stop offset="100%" stop-color="#1E5A8A"/>
+    </radialGradient>
+    <radialGradient id="esc-a" cx="50%" cy="38%" r="55%">
+      <stop offset="0%" stop-color="#FDFAF6"/>
+      <stop offset="100%" stop-color="#EDE8E0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="23" cy="23" rx="22" ry="20" fill="url(#esc-a)"/>
+  <circle cx="23" cy="23" r="13.5" fill="url(#ia)"/>
+  <circle cx="23" cy="23" r="13.5" fill="none" stroke="#0D3A5E" stroke-width="1.4"/>
+  <circle cx="23" cy="23" r="5.5" fill="#080808"/>
+  <circle cx="26.5" cy="19" r="2.2" fill="rgba(255,255,255,0.82)"/>
+  <circle cx="26.5" cy="19" r="0.8" fill="rgba(255,255,255,0.4)"/>
+</svg>`,
+
+  verdes:`<svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="iv" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#8AC48A"/>
+      <stop offset="30%" stop-color="#5A9E5A"/>
+      <stop offset="65%" stop-color="#3A7A40"/>
+      <stop offset="100%" stop-color="#1E4E24"/>
+    </radialGradient>
+    <radialGradient id="esc-v" cx="50%" cy="38%" r="55%">
+      <stop offset="0%" stop-color="#FDFAF6"/>
+      <stop offset="100%" stop-color="#EDE8E0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="23" cy="23" rx="22" ry="20" fill="url(#esc-v)"/>
+  <circle cx="23" cy="23" r="13.5" fill="url(#iv)"/>
+  <circle cx="23" cy="23" r="13.5" fill="none" stroke="#153520" stroke-width="1.4"/>
+  <circle cx="23" cy="23" r="5.5" fill="#080808"/>
+  <circle cx="26.5" cy="19" r="2.2" fill="rgba(255,255,255,0.82)"/>
+  <circle cx="26.5" cy="19" r="0.8" fill="rgba(255,255,255,0.4)"/>
+</svg>`,
+
+  marrones:`<svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="im" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#C49060"/>
+      <stop offset="30%" stop-color="#9A6438"/>
+      <stop offset="65%" stop-color="#6E4220"/>
+      <stop offset="100%" stop-color="#3E2210"/>
+    </radialGradient>
+    <radialGradient id="esc-m" cx="50%" cy="38%" r="55%">
+      <stop offset="0%" stop-color="#FDFAF6"/>
+      <stop offset="100%" stop-color="#EDE8E0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="23" cy="23" rx="22" ry="20" fill="url(#esc-m)"/>
+  <circle cx="23" cy="23" r="13.5" fill="url(#im)"/>
+  <circle cx="23" cy="23" r="13.5" fill="none" stroke="#250E04" stroke-width="1.4"/>
+  <circle cx="23" cy="23" r="5.5" fill="#060404"/>
+  <circle cx="26.5" cy="19" r="2.2" fill="rgba(255,255,255,0.82)"/>
+  <circle cx="26.5" cy="19" r="0.8" fill="rgba(255,255,255,0.4)"/>
+</svg>`,
+
+  avellana:`<svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="iav" cx="50%" cy="45%" r="50%">
+      <stop offset="0%"   stop-color="#6B3A14"/>
+      <stop offset="18%"  stop-color="#8B5220"/>
+      <stop offset="35%"  stop-color="#C8920A"/>
+      <stop offset="52%"  stop-color="#9A8A28"/>
+      <stop offset="70%"  stop-color="#5A7A24"/>
+      <stop offset="88%"  stop-color="#3A5818"/>
+      <stop offset="100%" stop-color="#243810"/>
+    </radialGradient>
+    <radialGradient id="gold-av" cx="50%" cy="45%" r="40%">
+      <stop offset="0%"   stop-color="rgba(220,160,20,0)"/>
+      <stop offset="60%"  stop-color="rgba(220,160,20,0.18)"/>
+      <stop offset="100%" stop-color="rgba(220,160,20,0)"/>
+    </radialGradient>
+    <radialGradient id="esc-av" cx="50%" cy="38%" r="55%">
+      <stop offset="0%"   stop-color="#FDFAF6"/>
+      <stop offset="100%" stop-color="#EDE8E0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="23" cy="23" rx="22" ry="20" fill="url(#esc-av)"/>
+  <circle cx="23" cy="23" r="13.5" fill="url(#iav)"/>
+  <circle cx="23" cy="23" r="13.5" fill="url(#gold-av)"/>
+  <circle cx="23" cy="23" r="9.5"  fill="none" stroke="rgba(180,130,15,0.30)" stroke-width="1.2"/>
+  <circle cx="23" cy="23" r="11.5" fill="none" stroke="rgba(80,110,30,0.25)"  stroke-width="0.8"/>
+  <circle cx="23" cy="23" r="13.5" fill="none" stroke="#1A2808" stroke-width="1.5"/>
+  <circle cx="23" cy="23" r="5.5"  fill="#060402"/>
+  <circle cx="26.5" cy="19" r="2.2" fill="rgba(255,255,255,0.82)"/>
+  <circle cx="26.5" cy="19" r="0.8" fill="rgba(255,255,255,0.40)"/>
+</svg>`,
+
+  grises:`<svg width="46" height="46" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="ig" cx="50%" cy="45%" r="50%">
+      <stop offset="0%"   stop-color="#9AA0A4"/>
+      <stop offset="30%"  stop-color="#7A8488"/>
+      <stop offset="62%"  stop-color="#5E686C"/>
+      <stop offset="85%"  stop-color="#485254"/>
+      <stop offset="100%" stop-color="#303A3C"/>
+    </radialGradient>
+    <radialGradient id="esc-g" cx="50%" cy="38%" r="55%">
+      <stop offset="0%"   stop-color="#FDFAF6"/>
+      <stop offset="100%" stop-color="#EDE8E0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="23" cy="23" rx="22" ry="20" fill="url(#esc-g)"/>
+  <circle cx="23" cy="23" r="13.5" fill="url(#ig)"/>
+  <circle cx="23" cy="23" r="10"   fill="none" stroke="rgba(140,150,155,0.30)" stroke-width="0.9"/>
+  <circle cx="23" cy="23" r="12"   fill="none" stroke="rgba(110,120,125,0.22)" stroke-width="0.8"/>
+  <circle cx="23" cy="23" r="13.5" fill="none" stroke="#1C2224" stroke-width="1.5"/>
+  <circle cx="23" cy="23" r="5.5"  fill="#080808"/>
+  <circle cx="26.5" cy="19" r="2.2" fill="rgba(255,255,255,0.82)"/>
+  <circle cx="26.5" cy="19" r="0.8" fill="rgba(255,255,255,0.40)"/>
+</svg>`,
+};
+
+// ── OJOS POR IRIS ─────────────────────────────────────────────
+const OJOS=[
+  {iris:"Azules", key:"azules",
+   fav:["Bronce y cobre — la regla de oro para ojos azules","Terracota y naranja quemado","Marrón chocolate","Dorado y melocotón cálido"],
+   evitar:["Azul del mismo tono — se anulan","Azul eléctrico — compite con el iris"],
+   prod:"Urban Decay Naked Heat · Too Faced Sweet Peach"},
+  {iris:"Verdes", key:"verdes",
+   fav:["Borgoña y ciruela — el complementario perfecto","Berenjena y violeta","Rojo vino","Malva y rosa oscuro"],
+   evitar:["Verde similar al iris — desaparece","Caqui muy parecido al iris"],
+   prod:"Charlotte Tilbury Dolce Vita · Urban Decay Midnight Cowgirl"},
+  {iris:"Marrones", key:"marrones",
+   fav:["Dorado y bronce — activan los puntos dorados del iris","Azul marino y cobalto — contraste máximo","Malva y ciruela","Verde esmeralda"],
+   evitar:["Marrón claro del mismo tono — se pierden","Beige sin shimmer"],
+   prod:"Urban Decay Naked · Too Faced Chocolate Bar"},
+  {iris:"Avellana", key:"avellana",
+   fav:["Verde musgo y oliva — activan el verde del iris","Cobre y bronce","Morado suave","Dorado rosado"],
+   evitar:["Gris frío — apaga la calidez","Rosas muy fríos"],
+   prod:"Too Faced Natural Love · Anastasia Beverly Hills Soft Glam"},
+  {iris:"Grises", key:"grises",
+   fav:["Azul marino","Violeta","Verde esmeralda","Negro ahumado — los grises admiten todo con contraste"],
+   evitar:["Gris del mismo tono — se pierden","Beige neutro sin contraste"],
+   prod:"Urban Decay Midnight Cowgirl · Natasha Denona Black Swan"},
+];
+
+// ── CORRECTORES DE COLOR ──────────────────────────────────────
+const CORRECTORES=[
+  {p:"Ojeras azul-violáceas",i:"👁️",cal:"Durazno-naranja (subtono cálido)",frio:"Rosa-lila (subtono frío)",u:"El naranja cancela el azul por contraste complementario",prod:"NARS Creamy Concealer · IT Cosmetics Bye Bye Under Eye"},
+  {p:"Rojeces y acné",i:"🔴",cal:"Verde cálido o amarillo suave",frio:"Verde puro frío",u:"El verde cancela el rojo — universal para todas las estaciones",prod:"NYX Color Correcting Palette · Catrice Colour Corrector"},
+  {p:"Manchas marrones",i:"🟤",cal:"Lila cálido o durazno en manchas oscuras",frio:"Lila frío o lavanda",u:"El morado-lavanda neutraliza los marrones por contraste",prod:"L.A. Girl HD Pro · ColourPop No Filter Concealer"},
+  {p:"Zonas amarillentas",i:"🟡",cal:"Morado suave (en capas muy finas)",frio:"Violeta frío",u:"El morado cancela el amarillo — aplicar con extrema delicadeza",prod:"NARS Radiant Creamy · Dermacol Corrector"},
+];
+
+// ── HEX DE BASES POR ESTACIÓN (para simulador de metamerismo) ─
+const BASE_HEX = {
+  primavera:[
+    {ref:"Catrice True Skin 012",h:"#F0B48C",nota:"Beige cálido durazno"},
+    {ref:"L'Oréal True Match W2",h:"#EAA87A",nota:"Dorado cálido vainilla"},
+    {ref:"MAC NC20",h:"#E8A878",nota:"Beige neutro-cálido"},
+    {ref:"NARS Fiji",h:"#F2B890",nota:"Glow luminoso cálido"},
+    {ref:"Armani Silk 4.5",h:"#EDB088",nota:"Satinado cálido natural"},
+  ],
+  verano:[
+    {ref:"Catrice HD 006",h:"#EDD4CC",nota:"Rose ivory frío"},
+    {ref:"L'Oréal N2 Neutral Rose",h:"#E8CCCA",nota:"Neutro rosado frío"},
+    {ref:"MAC NW15",h:"#E4C4C0",nota:"Rosa frío clásico"},
+    {ref:"NARS Syracuse",h:"#EAD0CC",nota:"Glow empolvado frío"},
+    {ref:"Charlotte LW 3",h:"#E6CECA",nota:"Luminoso suave frío"},
+  ],
+  otono:[
+    {ref:"Catrice True Skin 030",h:"#C8A07A",nota:"Oliva cálido"},
+    {ref:"L'Oréal True Match 3W",h:"#C89A68",nota:"Dorado cálido profundo"},
+    {ref:"MAC NC30",h:"#C49A6A",nota:"Cálido profundo"},
+    {ref:"Armani Silk 6",h:"#C29264",nota:"Profundo satinado"},
+    {ref:"NARS Syracuse",h:"#C89870",nota:"Glow terroso"},
+  ],
+  invierno:[
+    {ref:"Catrice HD 002",h:"#EAD8D4",nota:"Neutro muy frío"},
+    {ref:"L'Oréal True Match C1",h:"#EAD4D0",nota:"Rose ivory frío"},
+    {ref:"MAC NW10",h:"#E6D0CC",nota:"Mate impecable frío"},
+    {ref:"Estée Lauder 1C1",h:"#E4CECC",nota:"Alta cobertura frío"},
+    {ref:"NARS Deauville",h:"#E8D4D0",nota:"Cobertura alta frío"},
+  ],
+};
+
+// ── SEASONS ───────────────────────────────────────────────────
+const SEASONS={
+  primavera:{
+    label:"Primavera",e:"🌼",sub:"Cálida · Clara · Luminosa",
+    ac:"#D4845A",cielab:"L*65-78 / a*12-18 / b*22-30",pantone:"16-1546 Living Coral",
+    desc:"Tu piel irradia calidez y frescura. Los colores luminosos y cálidos te hacen brillar de forma natural.",
+    pal:[
+      {h:"#FF7F50",n:"Coral"},{h:"#FFD966",n:"Mantequilla"},{h:"#98FB98",n:"Menta"},
+      {h:"#FFDAB9",n:"Melocotón"},{h:"#FFA07A",n:"Salmón"},{h:"#F0E68C",n:"Khaki"},
+      {h:"#E8C87A",n:"Dorado"},{h:"#90EE90",n:"Verde lima"},
+    ],
+    evitar:[{h:"#800080",n:"Morado"},{h:"#000080",n:"Azul marino"},{h:"#696969",n:"Gris frío"},{h:"#8B0000",n:"Granate frío"}],
+    maquillaje:{
+      acabado:"Satinado o dewy — nunca mate total",cobertura:"Ligera a media",
+      rubor:{color:"Coral, melocotón o durazno cálido",acabado:"Satinado o shimmer fino"},
+      labial:{colores:["Coral","Melocotón","Rojo anaranjado","Nude dorado","Salmón"],acabado:"Satinado o cremoso"},
+      sombras:{paleta:"Dorado, coral, terracota clara, beige, verde menta",tecnica:"Shimmer en párpado móvil, difuminado cálido"},
+      delineado:{color:"Marrón cálido o bronce",tecnica:"Fino y natural o ahumado cálido"},
+      corrector:"Durazno-melocotón para ojeras · verde para rojeces",
+    },
+    productos:{
+    eco:[
+      {cat:"Base",ref:"Catrice True Skin 012 Warm Beige",p:"9,99€",nota:"Satinada · ΔE≈1.8 · cálida"},
+      {cat:"Base",ref:"Essence Fresh Fit Awake 10 Fair Porcelain",p:"4,99€",nota:"Ligera · subtono cálido claro"},
+      {cat:"Rubor",ref:"Catrice Blush Rush 050 Peachy Cream",p:"4,49€",nota:"Melocotón satinado · fácil difuminar"},
+      {cat:"Rubor",ref:"Essence Blush 10 Tick Tock Coral",p:"3,29€",nota:"Coral suave · económico"},
+      {cat:"Labial",ref:"NYX Butter Gloss Crème Brûlée",p:"7€",nota:"Nude dorado cremoso · jugoso"},
+      {cat:"Labial",ref:"NYX Shout Loud Satin Lip Coral",p:"7,99€",nota:"Coral satinado · cálido"},
+      {cat:"Labial",ref:"Catrice Volumizing Lip Balm 030 Coral Flush",p:"4,49€",nota:"Coral gloss hidratante"},
+      {cat:"Sombras",ref:"NYX Ult Shadow Palette Warm Neutrals",p:"12€",nota:"Coral melocotón dorado"},
+      {cat:"Sombras",ref:"Essence Nude Glam Eyeshadow Palette",p:"4,99€",nota:"Nude cálido 12 tonos · económica"},
+      {cat:"Delineado",ref:"Essence Longlasting Eye Pencil Brown",p:"2,49€",nota:"Marrón cálido · preciso"},
+      {cat:"Iluminador",ref:"Catrice Natural Glow Strobing Stick Gold",p:"4,49€",nota:"Dorado suave · crestas malares"},
+      {cat:"Máscara",ref:"Essence Lash Princess Brown",p:"3,29€",nota:"Marrón · alargadora · bestseller eco"},
+      {cat:"Máscara",ref:"L'Oréal Volume Million Lashes Brown",p:"11,99€",nota:"Marrón chocolate · volumen"},
+      {cat:"Prebase",ref:"Catrice Vitamin C Fresh Glow Primer",p:"3,99€",nota:"Glow vitamina C · luminosa"},
+      {cat:"Prebase",ref:"NYX First Base Serum Primer",p:"9,99€",nota:"Sérum prebase · larga duración"},
+      {cat:"Fijador",ref:"NYX Setting Spray Dewy Finish",p:"8,99€",nota:"Acabado jugoso · fija 16h"},
+      {cat:"Fijador",ref:"Catrice Prime Fine Multi Talent Fixing Spray",p:"5,99€",nota:"Natural y ligero · fijación suave"}
+    ],
+    medio:[
+      {cat:"Base",ref:"MAC Studio Radiance NC20",p:"39€",nota:"Satinado cálido · cobertura media"},
+      {cat:"Base",ref:"L'Oréal True Match W2 Golden Vanilla",p:"12€",nota:"Dorado vainilla · fórmula cálida"},
+      {cat:"Rubor",ref:"NARS Orgasm Blush",p:"32€",nota:"Coral + destello dorado · icónico"},
+      {cat:"Rubor",ref:"Benefit Dandelion Brightening Blush",p:"30€",nota:"Rosa melocotón empolvado"},
+      {cat:"Labial",ref:"MAC Lady Danger",p:"23€",nota:"Rojo anaranjado mate · Primavera total"},
+      {cat:"Labial",ref:"Bobbi Brown Crushed Lip Color Cheeky",p:"28€",nota:"Coral cremoso intenso"},
+      {cat:"Labial",ref:"NYX Professional Lip Lingerie Exotic",p:"9€",nota:"Melocotón mate satinado"},
+      {cat:"Sombras",ref:"Urban Decay Naked Palette",p:"35€",nota:"Nude dorado · paleta cálida clásica"},
+      {cat:"Sombras",ref:"Too Faced Natural Eyes Palette",p:"39€",nota:"Neutros cálidos · naturales versátiles"},
+      {cat:"Delineado",ref:"MAC Eye Kohl Cork",p:"17€",nota:"Marrón rojizo · suaviza la mirada"},
+      {cat:"Delineado",ref:"Urban Decay 24/7 Eye Pencil Whiskey",p:"20€",nota:"Marrón cálido · 24h preciso"},
+      {cat:"Iluminador",ref:"Charlotte Tilbury Flawless Filter 2 Fair-Medium",p:"42€",nota:"Glow dorado natural · 3 en 1"},
+      {cat:"Máscara",ref:"Maybelline Sky High Brown",p:"9,99€",nota:"Alargadora · marrón · bestseller"},
+      {cat:"Máscara",ref:"L'Oréal Telescopic Mascara Brown",p:"13€",nota:"Precisión · marrón cálido"},
+      {cat:"Prebase",ref:"e.l.f. Power Grip Primer",p:"10,99€",nota:"Agarre extremo · hidratante"},
+      {cat:"Prebase",ref:"Smashbox Photo Finish Illuminate Primer",p:"25€",nota:"Iluminador · glow sutil cálido"},
+      {cat:"Fijador",ref:"e.l.f. Stay All Night Setting Spray",p:"9,99€",nota:"Fijación 16h · ligero dewy"},
+      {cat:"Fijador",ref:"Urban Decay All Nighter Setting Spray",p:"28€",nota:"Fijación extrema · 16h garantizadas"}
+    ],
+    caro:[
+      {cat:"Base",ref:"NARS Light Reflecting Foundation Fiji",p:"48€",nota:"Glow luminoso · ΔE perfecto cálido"},
+      {cat:"Base",ref:"Armani Luminous Silk 4.5",p:"58€",nota:"El satinado más natural del mercado"},
+      {cat:"Rubor",ref:"Charlotte Tilbury Cheek to Chic Pillow Talk",p:"44€",nota:"Rosa melocotón shimmer dorado"},
+      {cat:"Rubor",ref:"NARS Blush Luster",p:"32€",nota:"Melocotón shimmer · luminoso"},
+      {cat:"Labial",ref:"Charlotte Tilbury K.I.S.S.I.N.G Coral Lustre",p:"34€",nota:"Coral satinado premium"},
+      {cat:"Labial",ref:"YSL Rouge Volupté Shine Coral",p:"38€",nota:"Coral brillante · muy hidratante"},
+      {cat:"Labial",ref:"Dior Addict Lip Colour Coral",p:"34€",nota:"Coral satinado Dior · hidratante"},
+      {cat:"Sombras",ref:"Too Faced Sweet Peach Palette",p:"49€",nota:"Toda la gama coral-melocotón"},
+      {cat:"Sombras",ref:"Charlotte Tilbury Luxury Eye Palette Warm Eyes",p:"55€",nota:"Dorados y cobres · edición lujo"},
+      {cat:"Delineado",ref:"Charlotte Tilbury Eye Colour Magic Matte Brown",p:"22€",nota:"Marrón cálido · doble punta"},
+      {cat:"Iluminador",ref:"Charlotte Tilbury Hollywood Flawless Filter",p:"52€",nota:"Glow cálido · icónico universal"},
+      {cat:"Iluminador",ref:"NARS Illuminator Laguna",p:"34€",nota:"Bronce dorado · piel cálida"},
+      {cat:"Máscara",ref:"Charlotte Tilbury Pillow Talk Push Up Lashes",p:"30€",nota:"Negro cálido · efecto bombshell"},
+      {cat:"Máscara",ref:"Lancôme Lash Idôle Brown Mascara",p:"28€",nota:"Marrón alargadora · precisa"},
+      {cat:"Prebase",ref:"Laura Mercier Foundation Primer Radiance",p:"38€",nota:"Iluminadora · glow satinado"},
+      {cat:"Prebase",ref:"Hourglass Veil Mineral Primer SPF 15",p:"52€",nota:"SPF 15 · larga duración · luminosa"},
+      {cat:"Fijador",ref:"Charlotte Tilbury Airbrush Flawless Setting Spray",p:"34€",nota:"Sedoso · 16h · fijación profesional"},
+      {cat:"Fijador",ref:"Hourglass Veil Soft Focus Setting Spray",p:"44€",nota:"Efecto filtro · piel perfecta"}
+    ]
+  },
+    cabello:{
+      favorables:["Castaño dorado","Rubio miel","Cobrizo","Caramelo","Balayage beige-dorado"],
+      evitar:["Negro azulado","Ceniza frío","Platino frío"],
+      mechas:"Balayage miel, caramelo y dorado",brillo:"Gloss transparente o dorado",
+    },
+    bases:{MAC:["NC20","NC25"],Catrice:["True Skin 012","True Skin 010"],Loreal:["True Match W2","True Match C2"],Armani:["Luminous Silk 4","4.5"],Charlotte:["Airbrush Flawless 3W"],Estee:["Double Wear 2N1","1W2"]},
+  },
+  verano:{
+    label:"Verano",e:"🌸",sub:"Fría · Suave · Empolvada",
+    ac:"#C8A0BC",cielab:"L*60-72 / a*10-15 / b*10-18",pantone:"15-3817 Lavender",
+    desc:"Tu piel tiene una delicadeza etérea. Los colores empolvados y fríos realzan tu sutileza natural.",
+    pal:[
+      {h:"#E6E6FA",n:"Lavanda"},{h:"#F4C2C2",n:"Rosa empolvado"},{h:"#B0C4DE",n:"Azul acero"},
+      {h:"#D8BFD8",n:"Malva"},{h:"#C1CDC1",n:"Gris perla"},{h:"#FFB6C1",n:"Rosa bebé"},
+      {h:"#B8B8DC",n:"Lila"},{h:"#AFCEAF",n:"Salvia"},
+    ],
+    evitar:[{h:"#FF8C00",n:"Naranja"},{h:"#8B4513",n:"Marrón cálido"},{h:"#DAA520",n:"Mostaza"},{h:"#FF4500",n:"Rojo cálido"}],
+    maquillaje:{
+      acabado:"Satinado suave o semimate",cobertura:"Media — unificar sin borrar el frescor rosado",
+      rubor:{color:"Rosa frío, malva o frambuesa suave",acabado:"Satinado o shimmer muy suave"},
+      labial:{colores:["Rosa empolvado","Malva","Frambuesa","Nude rosado frío","Borgoña suave"],acabado:"Satinado o cremoso — nunca mate opaco"},
+      sombras:{paleta:"Lilas, rosas fríos, malva, gris plateado, ciruela",tecnica:"Difuminado suave, acabados semi-brillantes"},
+      delineado:{color:"Gris marengo, borgoña suave o marrón oscuro frío",tecnica:"Fino o cat eye suave"},
+      corrector:"Rosa pálido o lila para ojeras · verde suave para rojeces leves",
+    },
+    productos:{
+    eco:[
+      {cat:"Base",ref:"Catrice HD Liquid 006 Rose Ivory",p:"8,99€",nota:"Rosa frío · ligera · fresca"},
+      {cat:"Base",ref:"Essence Skin Tint 05 Neutral Ivory",p:"4,99€",nota:"Segunda piel · subtono frío"},
+      {cat:"Rubor",ref:"Essence Blush 20 Baby Pink",p:"3,29€",nota:"Rosa frío empolvado · delicado"},
+      {cat:"Rubor",ref:"Catrice Blush Rush 020 Mauve Roses",p:"4,49€",nota:"Malva rosado · suave difuminable"},
+      {cat:"Labial",ref:"NYX Soft Matte Lip Cream London",p:"7€",nota:"Malva mate suave · frío"},
+      {cat:"Labial",ref:"Catrice Volumizing Lip Balm 020 Mauve Fate",p:"4,49€",nota:"Malva gloss hidratante"},
+      {cat:"Labial",ref:"NYX Lip Lingerie Push Up Exotic",p:"7,99€",nota:"Nude rosado frío · mate"},
+      {cat:"Sombras",ref:"NYX Ult Shadow Palette Cool Neutrals",p:"12€",nota:"Lilas malvas grises fríos"},
+      {cat:"Sombras",ref:"Essence Rose Look Eyeshadow Palette",p:"4,99€",nota:"Rosas fríos · 9 tonos · económica"},
+      {cat:"Delineado",ref:"Essence Kajal Eye Pencil 34 Cool Grey",p:"2,49€",nota:"Gris marengo · suave y frío"},
+      {cat:"Iluminador",ref:"Catrice Strobing Liquid Highlighter Rosé",p:"4,99€",nota:"Rosado plateado · frío dewy"},
+      {cat:"Máscara",ref:"Essence Lash Princess Black",p:"3,29€",nota:"Negro suave · alargadora eco"},
+      {cat:"Máscara",ref:"Maybelline Lash Sensational Sky High Black",p:"9,99€",nota:"Negro · alargadora extrema"},
+      {cat:"Prebase",ref:"Catrice Prime Fine Hydra Glow Primer",p:"4,49€",nota:"Hidratante · acabado dewy fresco"},
+      {cat:"Prebase",ref:"NYX Marshmallow Smoothing Primer",p:"11,99€",nota:"Alisadora · piel fresca suave"},
+      {cat:"Fijador",ref:"NYX Setting Spray Dewy Finish",p:"8,99€",nota:"Acabado jugoso · fija 16h"},
+      {cat:"Fijador",ref:"L'Oréal Infallible 3-Second Setting Spray",p:"14,99€",nota:"Fija en 3 segundos · dewy"}
+    ],
+    medio:[
+      {cat:"Base",ref:"MAC NW15 Studio Fix Fluid",p:"35€",nota:"Mate frío · cobertura total clásico"},
+      {cat:"Base",ref:"L'Oréal True Match N2 Neutral Rose",p:"12€",nota:"Neutro rosado · fresco y ligero"},
+      {cat:"Rubor",ref:"NARS Tourmaline Blush",p:"32€",nota:"Rosa frío satinado · muy delicado"},
+      {cat:"Rubor",ref:"Benefit Rockateur Rose Gold Shimmer Blush",p:"30€",nota:"Rosa palo con shimmer suave"},
+      {cat:"Labial",ref:"Charlotte Tilbury Pillow Talk Medium",p:"31€",nota:"Nude rosa frío · universalísimo"},
+      {cat:"Labial",ref:"MAC Twig",p:"23€",nota:"Nude frío · elegante y versátil"},
+      {cat:"Labial",ref:"NARS Belize Lip Gloss",p:"25€",nota:"Rosa pálido gloss · verano clásico"},
+      {cat:"Sombras",ref:"Charlotte Tilbury The Rock Chick Palette",p:"38€",nota:"Rosas y lilas · verano elegante"},
+      {cat:"Sombras",ref:"Urban Decay Naked 3 Palette",p:"54€",nota:"Toda la gama rosa frío · icónica"},
+      {cat:"Delineado",ref:"MAC Eye Kohl Fascinating",p:"17€",nota:"Gris malva · suave y elegante"},
+      {cat:"Delineado",ref:"Urban Decay 24/7 Eye Pencil Perversion",p:"20€",nota:"Negro intenso frío · 24h smudge"},
+      {cat:"Iluminador",ref:"NARS Highlighting Powder Albatross",p:"32€",nota:"Blanco perla frío · iridiscente"},
+      {cat:"Máscara",ref:"L'Oréal Telescopic Mascara Black",p:"13€",nota:"Precisión · negro intenso · precisa"},
+      {cat:"Máscara",ref:"Benefit Badgal Bang Mascara",p:"25€",nota:"Volumen extremo · negro frío"},
+      {cat:"Prebase",ref:"e.l.f. Poreless Putty Primer",p:"10,99€",nota:"Poro minimizador · suave liso"},
+      {cat:"Prebase",ref:"Benefit The POREfessional Primer",p:"35€",nota:"Poro invisible · profesional"},
+      {cat:"Fijador",ref:"MAC Prep + Prime Fix+",p:"25€",nota:"Hidratante · fija · refresca"},
+      {cat:"Fijador",ref:"e.l.f. Stay All Night Setting Spray",p:"9,99€",nota:"Fijación 16h · dewy suave"}
+    ],
+    caro:[
+      {cat:"Base",ref:"NARS Sheer Glow Foundation Syracuse",p:"52€",nota:"Glow empolvado frío · luminosa"},
+      {cat:"Base",ref:"Charlotte Tilbury Light Wonder Foundation 3",p:"42€",nota:"Luminoso natural · subtono frío"},
+      {cat:"Rubor",ref:"Charlotte Tilbury Cheek to Chic Pillow Talk Med",p:"44€",nota:"Rosa palo shimmer suave · frío"},
+      {cat:"Rubor",ref:"NARS Blush Deep Throat",p:"32€",nota:"Rosa sheer delicado · piel fría"},
+      {cat:"Labial",ref:"YSL Rouge Volupté Shine Rose Stiletto",p:"38€",nota:"Rosa frío brillante · hidratante"},
+      {cat:"Labial",ref:"Dior Addict Lip Glow 001 Pink",p:"34€",nota:"Rosa personalizado · jugoso premium"},
+      {cat:"Labial",ref:"Charlotte Tilbury K.I.S.S.I.N.G Penelope Pink",p:"34€",nota:"Rosa frío satinado · pro"},
+      {cat:"Sombras",ref:"Charlotte Tilbury The Dolce Vita Palette",p:"55€",nota:"Rosa malva · perfecto Verano"},
+      {cat:"Sombras",ref:"Tom Ford Eye Color Quad Rose Rush",p:"78€",nota:"Rosa frío iridiscente · lujo puro"},
+      {cat:"Delineado",ref:"Charlotte Tilbury Rock'N'Kohl Nude Pink",p:"22€",nota:"Malva pálido · abre la mirada"},
+      {cat:"Iluminador",ref:"Charlotte Tilbury Hollywood Light Wand Pink Fizz",p:"38€",nota:"Rosado plateado · icónico frío"},
+      {cat:"Iluminador",ref:"Hourglass Ambient Lighting Powder Dim Light",p:"52€",nota:"Perla suave · sofisticado lujo"},
+      {cat:"Máscara",ref:"Lancôme Lash Idôle Mascara Black",p:"28€",nota:"Alargadora · negro suave precisa"},
+      {cat:"Máscara",ref:"Charlotte Tilbury Exaggereyes Volume Mascara",p:"30€",nota:"Volumen extremo · negro frío"},
+      {cat:"Prebase",ref:"Smashbox Photo Finish Hydrating Primer",p:"34€",nota:"Hidratante intensiva · glow dewy"},
+      {cat:"Prebase",ref:"Laura Mercier Pure Canvas Primer Hydrating",p:"38€",nota:"Lienzo perfecto hidratante · pro"},
+      {cat:"Fijador",ref:"Charlotte Tilbury Airbrush Flawless Setting Spray",p:"34€",nota:"Sedoso · 16h · fijación profesional"},
+      {cat:"Fijador",ref:"Hourglass Veil Soft Focus Setting Spray",p:"44€",nota:"Efecto filtro · piel perfecta lujo"}
+    ]
+  },
+    cabello:{
+      favorables:["Castaño ceniza","Rubio ceniza","Platino suave","Mechones plateados"],
+      evitar:["Caoba cálido","Dorado intenso","Cobrizo"],
+      mechas:"Babylights platino o ceniza, balayage gris-perla",brillo:"Gloss violeta o neutro",
+    },
+    bases:{MAC:["NW15","NW20"],Catrice:["HD Liquid 006","True Skin 004"],Loreal:["True Match N2","R1C1"],Armani:["Luminous Silk 3","3.5"],Charlotte:["Light Wonder 3"],Estee:["Double Wear 1N1","2C1"]},
+  },
+  otono:{
+    label:"Otoño",e:"🍂",sub:"Cálida · Profunda · Terrosa",
+    ac:"#B8622A",cielab:"L*45-60 / a*8-14 / b*20-32",pantone:"18-1354 Burnt Sienna",
+    desc:"Tu piel tiene profundidad y calidez terrosa. Los colores tierra y ámbar amplifican tu intensidad natural.",
+    pal:[
+      {h:"#CC5500",n:"Terracota"},{h:"#6B8E23",n:"Verde musgo"},{h:"#DAA520",n:"Mostaza"},
+      {h:"#8B4513",n:"Marrón"},{h:"#A0522D",n:"Siena"},{h:"#556B2F",n:"Oliva"},
+      {h:"#CD853F",n:"Bronce"},{h:"#8FBC8F",n:"Salvia"},
+    ],
+    evitar:[{h:"#FF69B4",n:"Rosa frío"},{h:"#E6E6FA",n:"Lavanda"},{h:"#00BFFF",n:"Azul neón"},{h:"#000000",n:"Negro puro"}],
+    maquillaje:{
+      acabado:"Satinado o luminoso",cobertura:"Media a alta",
+      rubor:{color:"Terracota, melocotón oscuro, bronce rosado",acabado:"Satinado o shimmer cálido"},
+      labial:{colores:["Terracota","Siena","Marrón cálido","Nude cálido oscuro","Rojo ladrillo"],acabado:"Cremoso o satinado"},
+      sombras:{paleta:"Terracota, cobre, bronce, verde oliva, mostaza",tecnica:"Ahumado cálido, shimmer bronce"},
+      delineado:{color:"Marrón chocolate o negro cálido",tecnica:"Ahumado suave o liner marrón preciso"},
+      corrector:"Salmón-durazno para ojeras · verde para rojeces",
+    },
+    productos:{
+    eco:[
+      {cat:"Base",ref:"Catrice True Skin 030 Neutral Olive",p:"9,99€",nota:"Oliva cálido · ΔE perfecto Otoño"},
+      {cat:"Base",ref:"Essence Fresh Fit Awake 30 Warm Beige",p:"4,99€",nota:"Cálida profunda · ligera"},
+      {cat:"Rubor",ref:"Essence Blush 40 Caught Ya Blushing",p:"3,29€",nota:"Terracota rosado · muy difuminable"},
+      {cat:"Rubor",ref:"Catrice Blush Rush 060 Terracotta Craze",p:"4,49€",nota:"Terracota mate · otoñal puro"},
+      {cat:"Labial",ref:"NYX Shout Loud Satin Toffee",p:"8€",nota:"Nude tostado satinado · cálido"},
+      {cat:"Labial",ref:"Catrice Better Than Fake Lips 060 Bold Brick",p:"4,49€",nota:"Ladrillo cremoso · impacto"},
+      {cat:"Labial",ref:"NYX Matte Lip Cream Tierra",p:"7€",nota:"Terracota mate · clásico eco"},
+      {cat:"Sombras",ref:"NYX Ult Shadow Palette Warm Reds",p:"12€",nota:"Cobre bronce terracota otoñal"},
+      {cat:"Sombras",ref:"Essence Earth Edition Eyeshadow Palette",p:"5,99€",nota:"Tierras y bronces · muy otoñal"},
+      {cat:"Delineado",ref:"Catrice Kohl Kajal 030 Deep Brown",p:"2,49€",nota:"Marrón chocolate · intenso eco"},
+      {cat:"Iluminador",ref:"Essence Shimmer Topper Bronze Glow",p:"3,99€",nota:"Bronce shimmer · piel cálida"},
+      {cat:"Máscara",ref:"Essence Lash Princess Brown",p:"3,29€",nota:"Marrón alargadora · bestseller eco"},
+      {cat:"Máscara",ref:"Catrice Volume Glam Mascara Brown",p:"3,99€",nota:"Marrón · volumen · económica"},
+      {cat:"Prebase",ref:"Catrice The Mattifier Oil-Control Primer",p:"4,33€",nota:"Mate · control grasa · poros"},
+      {cat:"Prebase",ref:"NYX Pore Filler Primer",p:"11,99€",nota:"Rellena poros · alisadora mate"},
+      {cat:"Fijador",ref:"NYX Setting Spray Matte Finish",p:"8,99€",nota:"Mate · control grasa · 16h"},
+      {cat:"Fijador",ref:"Catrice Prime Fine Fixing Spray Matte",p:"5,99€",nota:"Mate natural · ligero eco"}
+    ],
+    medio:[
+      {cat:"Base",ref:"MAC Studio Radiance NC30",p:"39€",nota:"Cálido profundo · satinado pro"},
+      {cat:"Base",ref:"L'Oréal True Match 3W Golden Beige",p:"12€",nota:"Dorado cálido profundo · fórmula"},
+      {cat:"Rubor",ref:"Glossier Cloud Paint Dusk",p:"19€",nota:"Terracota cremoso · fácil difuminar"},
+      {cat:"Rubor",ref:"NARS Sin Blush",p:"32€",nota:"Melocotón shimmer cobre · rico"},
+      {cat:"Labial",ref:"MAC Devoted to Chili",p:"23€",nota:"Terracota mate · el icónico Otoño"},
+      {cat:"Labial",ref:"MAC Velvet Teddy",p:"23€",nota:"Nude tostado mate · clásico MAC"},
+      {cat:"Labial",ref:"Bobbi Brown Crushed Lip Color Brownie",p:"28€",nota:"Marrón cálido cremoso sofisticado"},
+      {cat:"Sombras",ref:"Urban Decay Naked Heat Palette",p:"35€",nota:"Toda la gama terracota-cobre"},
+      {cat:"Sombras",ref:"Too Faced Chocolate Bar Palette",p:"49€",nota:"Chocolate cobre · muy otoñal"},
+      {cat:"Delineado",ref:"MAC Eye Kohl Teddy",p:"17€",nota:"Marrón bronce · el clásico Otoño"},
+      {cat:"Delineado",ref:"Urban Decay 24/7 Eye Pencil Demolition",p:"20€",nota:"Marrón oscuro · 24h intenso"},
+      {cat:"Iluminador",ref:"NARS Illuminator Copacabana",p:"34€",nota:"Bronce cálido · dorado piel oliva"},
+      {cat:"Máscara",ref:"Maybelline Sky High Brown",p:"9,99€",nota:"Marrón alargadora · bestseller"},
+      {cat:"Máscara",ref:"Too Faced Better Than Sex Brown",p:"26€",nota:"Marrón chocolate · volumen XL"},
+      {cat:"Prebase",ref:"e.l.f. Poreless Putty Primer",p:"10,99€",nota:"Alisadora · poro invisible suave"},
+      {cat:"Prebase",ref:"Smashbox Photo Finish Pore Minimizing Primer",p:"38€",nota:"Poro minimizado · larga duración"},
+      {cat:"Fijador",ref:"Urban Decay All Nighter Setting Spray",p:"28€",nota:"Fijación 16h · duración extrema"},
+      {cat:"Fijador",ref:"MAC Prep + Prime Fix+",p:"25€",nota:"Fija y refresca · multiusos pro"}
+    ],
+    caro:[
+      {cat:"Base",ref:"Armani Luminous Silk Foundation 6",p:"58€",nota:"Profundo satinado · más natural"},
+      {cat:"Base",ref:"NARS Sheer Glow Foundation Syracuse",p:"52€",nota:"Glow terroso · ΔE preciso Otoño"},
+      {cat:"Rubor",ref:"Charlotte Tilbury Cheek to Chic Love Is the Drug",p:"44€",nota:"Terracota shimmer bronce lujo"},
+      {cat:"Rubor",ref:"NARS Blush Exhibit A",p:"32€",nota:"Melocotón oscuro shimmer cobre"},
+      {cat:"Labial",ref:"Charlotte Tilbury Matte Rev Walk of Shame",p:"34€",nota:"Terracota mate · icónico premium"},
+      {cat:"Labial",ref:"Tom Ford Lip Color Cognac",p:"58€",nota:"Marrón cálido · lujo puro"},
+      {cat:"Labial",ref:"YSL Rouge Pur Couture Brun Vintage",p:"38€",nota:"Terracota YSL · satinado lujo"},
+      {cat:"Sombras",ref:"Tom Ford Eye Color Quad Cognac Sable",p:"78€",nota:"Cobre y bronce · lujo absoluto"},
+      {cat:"Sombras",ref:"Charlotte Tilbury Smokey Eye Luxury Palette",p:"55€",nota:"Cálida ahumada · otoñal premium"},
+      {cat:"Delineado",ref:"Charlotte Tilbury Colour Chameleon Dark Pearl",p:"22€",nota:"Marrón bronce · doble punta pro"},
+      {cat:"Iluminador",ref:"Hourglass Ambient Lighting Powder Bronze",p:"52€",nota:"Bronce sofisticado · lujo máximo"},
+      {cat:"Iluminador",ref:"Charlotte Tilbury Bar of Gold Highlighter",p:"38€",nota:"Bronce dorado · Otoño ideal"},
+      {cat:"Máscara",ref:"YSL Mascara Volume Effet Faux Cils Brown",p:"35€",nota:"Marrón intenso · volumen lujo"},
+      {cat:"Máscara",ref:"Lancôme Lash Idôle Brown Mascara",p:"28€",nota:"Marrón preciso · alargadora pro"},
+      {cat:"Prebase",ref:"Hourglass Veil Mineral Primer SPF 15",p:"52€",nota:"SPF 15 · larga duración · lujo"},
+      {cat:"Prebase",ref:"Laura Mercier Pure Canvas Primer",p:"38€",nota:"Lienzo perfecto · profesional"},
+      {cat:"Fijador",ref:"Charlotte Tilbury Airbrush Flawless Setting Spray",p:"34€",nota:"Fijación sedosa · 16h profesional"},
+      {cat:"Fijador",ref:"Hourglass Veil Soft Focus Setting Spray",p:"44€",nota:"Efecto filtro · piel perfecta"}
+    ]
+  },
+    cabello:{
+      favorables:["Castaño rojizo","Cobrizo","Auburn","Caramelo intenso","Balayage terracota"],
+      evitar:["Platino frío","Ceniza fría","Negro azulado"],
+      mechas:"Balayage terracota o cobre sobre base castaño",brillo:"Gloss cobrizo o caramelo",
+    },
+    bases:{MAC:["NC30","NC35","NC40"],Catrice:["True Skin 030","True Skin 040"],Loreal:["True Match 3W","4W"],Armani:["Luminous Silk 6","7"],Charlotte:["Airbrush Flawless 5W"],Estee:["Double Wear 3W1","3W2"]},
+  },
+  invierno:{
+    label:"Invierno",e:"❄️",sub:"Fría · Brillante · Alto contraste",
+    ac:"#B03050",cielab:"L*50-70 / a*5-25 / b*5-15",pantone:"19-1557 Chili Pepper",
+    desc:"Tu piel tiene contraste dramático y presencia poderosa. Los colores puros e intensos te empoderan.",
+    pal:[
+      {h:"#1a1a1a",n:"Negro"},{h:"#F5F5F5",n:"Blanco"},{h:"#DC143C",n:"Rubí"},
+      {h:"#FF00FF",n:"Fucsia"},{h:"#000080",n:"Azul marino"},{h:"#8B0000",n:"Burdeos"},
+      {h:"#4B0082",n:"Índigo"},{h:"#006400",n:"Esmeralda"},
+    ],
+    evitar:[{h:"#DAA520",n:"Mostaza"},{h:"#8B4513",n:"Terracota"},{h:"#F5DEB3",n:"Beige cálido"},{h:"#D2B48C",n:"Camel"}],
+    maquillaje:{
+      acabado:"Mate o satinado",cobertura:"Media a alta — la piel impecable es parte de la estética",
+      rubor:{color:"Rosa frío, frambuesa, borgoña o fucsia suave",acabado:"Shimmer frío o semimate"},
+      labial:{colores:["Rojo rubí","Fucsia","Burdeos","Rojo frío puro","Borgoña profundo"],acabado:"Mate o satinado — el color puro es la clave"},
+      sombras:{paleta:"Negro, gris ahumado, azul cobalto, fucsia, ciruela, plata",tecnica:"Ahumado dramático, cat eye, cut crease"},
+      delineado:{color:"Negro puro — aquí el negro es protagonista",tecnica:"Liner preciso, cat eye dramático o smudged"},
+      corrector:"Rosa pálido o lila para ojeras · verde para rojeces",
+    },
+    productos:{
+    eco:[
+      {cat:"Base",ref:"Catrice HD Liquid 002 Neutral Ivory",p:"8,99€",nota:"Neutro muy frío · cubriente eco"},
+      {cat:"Base",ref:"Essence Skin Tint 02 Porcelain",p:"4,99€",nota:"Muy clara · subtono frío · ligera"},
+      {cat:"Rubor",ref:"Catrice Blush Rush 030 Candy Pink",p:"4,49€",nota:"Rosa frío mate · limpio preciso"},
+      {cat:"Rubor",ref:"Essence Blush 30 Strawberry Fields",p:"3,29€",nota:"Rosa frambuesa suave · frío"},
+      {cat:"Labial",ref:"NYX Matte Lip Cream Black Berry",p:"7€",nota:"Burdeos mate · impacto frío"},
+      {cat:"Labial",ref:"Catrice Ultimate Stay Lip Colour 130 Berry Sorbet",p:"3,99€",nota:"Frambuesa mate intensa eco"},
+      {cat:"Labial",ref:"NYX Soft Matte Lip Cream Copenhagen",p:"7€",nota:"Rojo frambuesa mate · Invierno"},
+      {cat:"Sombras",ref:"NYX Ult Shadow Palette Brights",p:"12€",nota:"Intensos fríos · impacto visual"},
+      {cat:"Sombras",ref:"Essence Smoky Eyeshadow Palette",p:"5,99€",nota:"Grises y negros ahumados eco"},
+      {cat:"Delineado",ref:"Catrice Kohl Kajal 010 Black",p:"2,49€",nota:"Negro puro · intenso · eco"},
+      {cat:"Iluminador",ref:"Catrice Feather Effect Highlight Silver",p:"3,99€",nota:"Plata fría · shimmer intenso eco"},
+      {cat:"Máscara",ref:"Essence Extreme Volume Mascara Black",p:"3,29€",nota:"Negro · volumen · economicísima"},
+      {cat:"Máscara",ref:"NYX Worth the Hype Mascara Black",p:"8,99€",nota:"Negro · volumen y longitud eq."},
+      {cat:"Prebase",ref:"Catrice The Mattifier Oil-Control Primer",p:"4,33€",nota:"Mate · control grasa · poros eco"},
+      {cat:"Prebase",ref:"NYX Shine Killer Primer",p:"9,99€",nota:"Antibrillo extremo · mate perfecto"},
+      {cat:"Fijador",ref:"NYX Setting Spray Matte Finish",p:"8,99€",nota:"Mate · control grasa · 16h"},
+      {cat:"Fijador",ref:"Essence Stay All Day 18h Setting Spray",p:"4,99€",nota:"Mate larga duración · económico"}
+    ],
+    medio:[
+      {cat:"Base",ref:"MAC NW10 Studio Fix Fluid",p:"35€",nota:"Mate impecable · muy frío pro"},
+      {cat:"Base",ref:"L'Oréal True Match C1 Rose Ivory",p:"12€",nota:"Muy frío y ligero · subtono frío"},
+      {cat:"Rubor",ref:"MAC Margin Powder Blush",p:"19€",nota:"Rosa frambuesa mate · Invierno"},
+      {cat:"Rubor",ref:"NARS Deep Throat Blush",p:"32€",nota:"Rosa suave sheer · piel fría"},
+      {cat:"Labial",ref:"MAC Ruby Woo",p:"23€",nota:"Rojo frío mate · el clásico absoluto"},
+      {cat:"Labial",ref:"MAC Diva",p:"23€",nota:"Burdeos profundo mate · dramático"},
+      {cat:"Labial",ref:"Urban Decay Vice Lipstick F-Bomb",p:"19€",nota:"Fucsia mate intenso · frío"},
+      {cat:"Sombras",ref:"Urban Decay Naked Midnight Palette",p:"35€",nota:"Gama fría · alto contraste icónica"},
+      {cat:"Sombras",ref:"Morphe x James Charles Palette",p:"39€",nota:"Intensos fríos y neutros contraste"},
+      {cat:"Delineado",ref:"KVD Tattoo Liner Trooper Black",p:"22€",nota:"Negro máximo impacto · 24h"},
+      {cat:"Delineado",ref:"Urban Decay 24/7 Eye Pencil Perversion",p:"20€",nota:"Negro intenso frío · 24h smudge"},
+      {cat:"Iluminador",ref:"NARS Highlighting Powder Pointing",p:"32€",nota:"Plata pura · Invierno total"},
+      {cat:"Máscara",ref:"Benefit Badgal Bang Mascara",p:"25€",nota:"Volumen extremo · negro pro"},
+      {cat:"Máscara",ref:"Maybelline Sky High Cosmic Black Mascara",p:"9,99€",nota:"Negro extremo · alargadora best"},
+      {cat:"Prebase",ref:"e.l.f. Poreless Putty Primer",p:"10,99€",nota:"Alisadora · base perfecta mate"},
+      {cat:"Prebase",ref:"Smashbox 24 Hour Shadow Primer",p:"23€",nota:"Fija sombras 24h · mate impecable"},
+      {cat:"Fijador",ref:"Urban Decay All Nighter Setting Spray",p:"28€",nota:"Fijación 16h · sin parabenos"},
+      {cat:"Fijador",ref:"MAC Prep + Prime Fix+",p:"25€",nota:"Multiusos · fija y refresca pro"}
+    ],
+    caro:[
+      {cat:"Base",ref:"Estée Lauder Double Wear 1C1 Cool Bone",p:"47€",nota:"El mate más duradero del mercado"},
+      {cat:"Base",ref:"NARS All Day Luminous Deauville",p:"49€",nota:"Cobertura alta · neutro muy frío"},
+      {cat:"Rubor",ref:"Charlotte Tilbury Cheek to Chic How Rude",p:"44€",nota:"Rosa fucsia shimmer · Invierno total"},
+      {cat:"Rubor",ref:"NARS Sin Blush",p:"32€",nota:"Rosa frambuesa shimmer · intenso"},
+      {cat:"Labial",ref:"YSL Rouge Pur Couture Le Rouge",p:"38€",nota:"Rojo puro frío satinado · lujo YSL"},
+      {cat:"Labial",ref:"Tom Ford Lip Color Chinese New Year Red",p:"58€",nota:"Rojo frío perfecto · lujo absoluto"},
+      {cat:"Labial",ref:"Charlotte Tilbury K.I.S.S.I.N.G Bitch Perfect",p:"34€",nota:"Frambuesa mate · icónico Invierno"},
+      {cat:"Sombras",ref:"Natasha Denona Black Swan Palette",p:"65€",nota:"Ahumado dramático frío · lujo"},
+      {cat:"Sombras",ref:"Tom Ford Eye Color Quad Noir Magnetique",p:"78€",nota:"Negro y plata · lujo puro total"},
+      {cat:"Delineado",ref:"Charlotte Tilbury Rock'N'Kohl Bedroom Black",p:"22€",nota:"Negro intenso · pro preciso"},
+      {cat:"Iluminador",ref:"Charlotte Tilbury Hollywood Light Wand Silver",p:"38€",nota:"Plata pura · Invierno total"},
+      {cat:"Iluminador",ref:"Hourglass Ambient Lighting Powder Radiant Light",p:"52€",nota:"Plata sutil · calidad extrema lujo"},
+      {cat:"Máscara",ref:"Lancôme Monsieur Big Mascara Black",p:"28€",nota:"Volumen XXL · negro · profesional"},
+      {cat:"Máscara",ref:"Charlotte Tilbury Exaggereyes Volume Mascara",p:"30€",nota:"Volumen dramático · negro intenso"},
+      {cat:"Prebase",ref:"Make Up For Ever Step 1 Skin Equalizer",p:"32€",nota:"Igualador de piel · profesional"},
+      {cat:"Prebase",ref:"Hourglass Veil Mineral Primer SPF 15",p:"52€",nota:"SPF 15 · mate perfecto · máximo lujo"},
+      {cat:"Fijador",ref:"Charlotte Tilbury Airbrush Flawless Setting Spray",p:"34€",nota:"Sedoso · 16h · fijación profesional"},
+      {cat:"Fijador",ref:"Dior Forever Skin Correct Setting Spray",p:"38€",nota:"Mate Dior · larga duración premium"}
+    ]
+  },
+    cabello:{
+      favorables:["Negro azabache","Castaño muy oscuro azulado","Platino puro","Rojo intenso frío"],
+      evitar:["Castaño dorado","Cobrizo","Rubio miel"],
+      mechas:"Mechones platino puro o colores fríos (violeta, azul)",brillo:"Gloss violeta o plateado",
+    },
+    bases:{MAC:["NW10","NW13"],Catrice:["HD Liquid 002","HD Liquid 004"],Loreal:["True Match C1","N1"],Armani:["Luminous Silk 2","2.5"],Charlotte:["Airbrush Flawless 2N"],Estee:["Double Wear 1C1","1N1"]},
+  },
+};
+
+// ── AGE ───────────────────────────────────────────────────────
+const AGE_RECS=a=>{
+  if(!a) return null;
+  if(a<=29) return {sat:"Alta",base:"Satinada o dewy",lab:"Mate o satinado",tip:"Experimenta libremente — cualquier acabado funciona."};
+  if(a<=39) return {sat:"Media-alta",base:"Dewy",lab:"Satinado",tip:"El dewy realza la luminosidad natural."};
+  if(a<=49) return {sat:"Media",base:"Luminosa",lab:"Cremoso",tip:"Iluminador estratégico en crestas malares. Evitar polvos en zonas secas."};
+  if(a<=59) return {sat:"Media-baja",base:"Muy luminosa",lab:"Gloss o aceite",tip:"Técnica lifting visual: cejas ascendentes + rubor alto + iluminador."};
+  return {sat:"Baja",base:"Hidratante",lab:"Aceite o laca",tip:"Siempre texturas cremosas. Evita polvos sueltos en todo el rostro."};
+};
+
+// ── LUZ ───────────────────────────────────────────────────────
+const LIGHTS=[
+  {id:"d65",   n:"Luz natural",      sub:"D65 · 6500K · CRI 100",e:"☀️",cri:100,col:"#4ade80",f:"none"},
+  {id:"led_pro",n:"LED profesional", sub:"5000K · CRI 95+",      e:"💡",cri:95, col:"#a3e635",f:"saturate(0.97)"},
+  {id:"fluor", n:"Fluorescente",     sub:"TL84 · 4000K · CRI 80",e:"🏢",cri:80, col:"#facc15",f:"saturate(0.72) hue-rotate(-8deg)"},
+  {id:"led_malo",n:"LED doméstico",  sub:"3000K · CRI 70",       e:"🔌",cri:70, col:"#fb923c",f:"sepia(0.25) saturate(0.6)"},
+  {id:"sodio", n:"Luz de sodio",     sub:"Comercio · CRI <60",   e:"🏪",cri:55, col:"#f87171",f:"sepia(0.75) saturate(0.3)"},
+];
+
+// ── CSS ───────────────────────────────────────────────────────
+const CSS=`
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#14110e;--card:rgba(232,210,180,0.05);--bd:rgba(200,169,126,0.18);--gd:#c8a97e;--wt:#f5ede0;--st:rgba(200,169,126,0.65);--sh:0 2px 16px rgba(0,0,0,0.3);--br:14px}
+body{background:var(--bg);color:var(--wt);font-family:'Jost',sans-serif;min-height:100vh}
+.cg{font-family:'Cormorant Garamond',serif}
+.gd{color:var(--gd)}
+.btn{cursor:pointer;border:none;font-family:'Jost',sans-serif;outline:none;transition:all .2s}
+.btn-g{background:var(--gd);color:#14110e;font-weight:500;padding:.7rem 1.8rem;border-radius:40px;font-size:.9rem;letter-spacing:.04em}
+.btn-g:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-g:disabled{opacity:.35;transform:none;cursor:default;pointer-events:none}
+.btn-o{background:transparent;border:1px solid var(--bd);color:var(--st);padding:.5rem 1.1rem;border-radius:40px;font-size:.78rem}
+.btn-o:hover{border-color:var(--gd);color:var(--gd)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:var(--br);padding:1.3rem;box-shadow:var(--sh)}
+.tag{display:inline-block;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;font-family:'Jost',sans-serif;background:rgba(200,169,126,0.12);color:var(--gd);padding:.22rem .7rem;border-radius:4px}
+.div{width:44px;height:1px;background:linear-gradient(to right,var(--gd),transparent);margin:.5rem 0 1.1rem}
+.info{background:rgba(200,169,126,0.07);border:1px solid rgba(200,169,126,0.2);border-radius:10px;padding:.85rem 1rem;font-size:.81rem;color:rgba(245,237,224,.8);line-height:1.65}
+.info strong,.info b{color:var(--gd)}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.9rem}
+.g3{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.8rem}
+.sep{height:1px;background:var(--bd);margin:1rem 0}
+input[type=range]{width:100%;accent-color:var(--gd)}
+.acc{background:var(--card);border:1px solid var(--bd);border-radius:var(--br);overflow:hidden;margin-bottom:.7rem}
+.acc-h{width:100%;display:flex;align-items:center;justify-content:space-between;padding:1rem 1.2rem;background:transparent;border:none;cursor:pointer;font-family:'Jost',sans-serif;font-size:.87rem;font-weight:500;color:var(--wt);text-align:left;transition:background .2s}
+.acc-h:hover{background:rgba(200,169,126,0.05)}
+.acc-h.open{background:rgba(200,169,126,0.07);border-bottom:1px solid var(--bd)}
+.acc-arr{font-size:.65rem;color:var(--st);transition:transform .25s;flex-shrink:0;margin-left:8px}
+.acc-h.open .acc-arr{transform:rotate(180deg)}
+.acc-b{padding:1.1rem}
+.tier-tabs{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.tier-tab{font-family:'Jost',sans-serif;font-size:.75rem;padding:.35rem .9rem;border-radius:40px;cursor:pointer;border:1px solid var(--bd);background:transparent;color:var(--st);transition:all .2s}
+.tier-tab.on{background:var(--gd);color:#14110e;border-color:var(--gd);font-weight:500}
+`;
+
+// ── COMPONENTES ───────────────────────────────────────────────
+function Chip({h,n}){
+  return <div style={{textAlign:"center"}}>
+    <div style={{width:46,height:46,borderRadius:9,background:h,border:"1px solid rgba(255,255,255,.1)",margin:"0 auto .28rem"}}/>
+    <span style={{fontSize:".6rem",color:"rgba(245,237,224,.5)",display:"block"}}>{n}</span>
+  </div>;
+}
+function Pill({t}){
+  return <span style={{display:"inline-block",background:"rgba(200,169,126,.1)",border:"1px solid rgba(200,169,126,.2)",borderRadius:40,padding:".22rem .75rem",fontSize:".75rem",color:"rgba(245,237,224,.8)",margin:".2rem .2rem"}}>{t}</span>;
+}
+function Acc({title,icon,open:o=false,children}){
+  const [open,setOpen]=useState(o);
+  return <div className="acc">
+    <button className={`acc-h${open?" open":""}`} onClick={()=>setOpen(!open)}>
+      <span>{icon} {title}</span><span className="acc-arr">▼</span>
+    </button>
+    {open && <div className="acc-b">{children}</div>}
+  </div>;
+}
+function ProdTier({productos}){
+  const [tier,setTier]=useState("eco");
+  const labels={eco:"💚 Económico",medio:"🟡 Precio medio",caro:"💎 Premium"};
+  const catIcon={"Base":"🧴","Rubor":"🌸","Labial":"💋","Sombras":"👁️","Delineado":"✏️","Iluminador":"✨","Máscara":"🪄","Prebase":"🫧","Fijador":"🔒","Corrector":"🎭"};
+  const prods = productos[tier]||[];
+  // Agrupar por categoría
+  const byCat = {};
+  prods.forEach(p=>{ if(!byCat[p.cat]) byCat[p.cat]=[]; byCat[p.cat].push(p); });
+  return <>
+    <div className="tier-tabs">
+      {["eco","medio","caro"].map(t=>(
+        <button key={t} className={`tier-tab${tier===t?" on":""}`} onClick={()=>setTier(t)}>{labels[t]}</button>
+      ))}
+    </div>
+    {Object.entries(byCat).map(([cat,items])=>(
+      <div key={cat} style={{marginBottom:".9rem"}}>
+        <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".45rem"}}>{catIcon[cat]||"·"} {cat}</p>
+        <div className="g3">
+          {items.map(p=>(
+            <div key={p.ref} style={{background:"rgba(200,169,126,.05)",border:"1px solid var(--bd)",borderRadius:12,padding:".85rem"}}>
+              <div style={{fontSize:".82rem",fontWeight:500,color:"var(--wt)",marginBottom:".2rem",lineHeight:1.3}}>{p.ref}</div>
+              <div style={{fontSize:".8rem",color:"var(--gd)"}}>{p.p}</div>
+              {p.nota&&<div style={{fontSize:".7rem",color:"var(--st)",marginTop:".18rem"}}>{p.nota}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+  </>;
+}
+
+// ── APP ───────────────────────────────────────────────────────
+function App(){
+  const [screen,setScreen]=useState("home");
+  const [step,setStep]=useState(0);
+  const [ans,setAns]=useState({});
+  const [fitz,setFitz]=useState(null);
+  const [season,setSeason]=useState(null);
+  const [face,setFace]=useState(null);
+  const [age,setAge]=useState(35);
+  const [iris,setIris]=useState(null);
+  const [lightId,setLightId]=useState("d65");
+
+  const s=season?SEASONS[season]:null;
+  const faceData=face?FACE_SHAPES.find(f=>f.id===face):null;
+  const ageR=AGE_RECS(age);
+  const light=LIGHTS.find(l=>l.id===lightId);
+  const fitzData=fitz?FITZ.find(f=>f.n===fitz):null;
+
+  const handleAns=(stepId,val)=>{
+    const na={...ans,[stepId]:val}; setAns(na);
+    if(step<QUIZ.length-1){ setStep(step+1); }
+    else { setScreen("fitzpatrick"); }
+  };
+  const finishFitz=(f)=>{ setFitz(f); setSeason(calcSeason(ans,f)); setScreen("face"); };
+  const reset=()=>{setScreen("home");setStep(0);setAns({});setFitz(null);setSeason(null);setFace(null);setAge(35);setIris(null);};
+
+  // HOME
+  if(screen==="home") return(
+    <div style={{minHeight:"100vh",background:"radial-gradient(ellipse at 50% 0%,rgba(200,169,126,0.1) 0%,#14110e 60%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"3rem 1.5rem",textAlign:"center"}}>
+      <style>{CSS}</style>
+      <div style={{fontSize:"2.2rem",marginBottom:"1rem"}}>🌸</div>
+      <div className="tag" style={{marginBottom:"1rem"}}>Colorimetría · Maquillaje · Piel</div>
+      <h1 className="cg" style={{fontSize:"clamp(2.2rem,6vw,3.8rem)",fontWeight:300,lineHeight:1.1,marginBottom:".5rem"}}>
+        <em className="gd">Matiz</em>
+      </h1>
+      <p className="cg" style={{fontSize:"clamp(1rem,2.5vw,1.3rem)",fontWeight:300,color:"var(--st)",letterSpacing:".08em",marginBottom:"2.5rem"}}>
+        Colorimetría de piel y maquillaje
+      </p>
+      <div style={{display:"flex",flexDirection:"column",gap:".85rem",width:"100%",maxWidth:320}}>
+        <button className="btn btn-g" style={{fontSize:"1rem",padding:"1rem"}} onClick={()=>setScreen("quiz")}>
+          🎨 Descubrir mi estación
+        </button>
+        <button className="btn btn-o" onClick={()=>setScreen("explore")}>💡 Luz & Metamerismo</button>
+      </div>
+      <div style={{display:"flex",gap:"1.2rem",flexWrap:"wrap",justifyContent:"center",marginTop:"2.5rem"}}>
+        {["💄 Maquillaje","🎨 Fitzpatrick","🧬 Biofísica","📐 CIELAB","💡 CRI","🧏‍♀️ Morfología","👁️ Ojos por iris","💇 Cabello"].map(b=>(
+          <span key={b} style={{fontSize:".7rem",color:"rgba(200,169,126,.45)",letterSpacing:".06em"}}>{b}</span>
+        ))}
+      </div>
+    </div>
+  );
+
+  // QUIZ
+  if(screen==="quiz"){
+    const q=QUIZ[step];
+    return(
+      <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",flexDirection:"column"}}>
+        <style>{CSS}</style>
+        <div style={{height:3,background:"rgba(200,169,126,.12)"}}>
+          <div style={{height:"100%",background:"var(--gd)",width:`${(step/QUIZ.length)*100}%`,transition:"width .4s"}}/>
+        </div>
+        <div style={{padding:".85rem 1.3rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <button className="btn btn-o" onClick={reset}>← Inicio</button>
+          <span style={{fontSize:".72rem",color:"var(--st)"}}>{step+1} / {QUIZ.length}</span>
+        </div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",padding:"2rem 1.3rem",maxWidth:540,margin:"0 auto",width:"100%"}}>
+          <div className="tag" style={{marginBottom:".9rem"}}>Pregunta {step+1}</div>
+          <h2 className="cg" style={{fontSize:"clamp(1.3rem,3vw,1.8rem)",fontWeight:300,lineHeight:1.45,marginBottom:"2rem"}}>{q.q}</h2>
+          <div style={{display:"flex",flexDirection:"column",gap:".7rem"}}>
+            {q.ops.map(o=>(
+              <button key={o.v} className="btn card" style={{textAlign:"left",padding:"1rem 1.2rem",cursor:"pointer",display:"flex",alignItems:"center",gap:"1rem",fontSize:".86rem",color:"rgba(245,237,224,.82)"}}
+                onClick={()=>handleAns(q.id,o.v)}>
+                <span style={{fontSize:"1.3rem",flexShrink:0}}>{o.e}</span><span>{o.l}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FITZPATRICK
+  if(screen==="fitzpatrick") return(
+    <div style={{minHeight:"100vh",background:"var(--bg)",padding:"1.2rem"}}>
+      <style>{CSS}</style>
+      <div style={{maxWidth:560,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:"1.3rem"}}>
+          <button className="btn btn-o" onClick={()=>{setStep(QUIZ.length-1);setScreen("quiz");}}>← Atrás</button>
+          <button className="btn btn-o" onClick={()=>finishFitz("III")}>Saltar →</button>
+        </div>
+        <div className="tag" style={{marginBottom:".7rem"}}>Escala Fitzpatrick</div>
+        <h2 className="cg" style={{fontSize:"clamp(1.3rem,3vw,1.8rem)",fontWeight:300,marginBottom:".35rem"}}>
+          ¿Tu <em className="gd">color de piel</em>?
+        </h2>
+        <p style={{fontSize:".78rem",color:"var(--st)",marginBottom:".5rem"}}>
+          Evalúa tu piel sin bronceado, bajo luz natural.
+        </p>
+        <div className="info" style={{marginBottom:"1.3rem",fontSize:".77rem"}}>
+          Mide la <b>profundidad</b> (cantidad de melanina), no el subtono cálido/frío que ya analizamos.
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:".65rem",marginBottom:"1.4rem"}}>
+          {FITZ.map(f=>(
+            <button key={f.n} className="btn" style={{textAlign:"left",padding:"1rem 1.2rem",cursor:"pointer",background:fitz===f.n?"rgba(200,169,126,.08)":"rgba(255,255,255,.03)",border:`1px solid ${fitz===f.n?"var(--gd)":"rgba(200,169,126,.15)"}`,borderRadius:12,display:"flex",alignItems:"center",gap:"1rem",transition:"all .2s"}}
+              onClick={()=>setFitz(f.n)}>
+              <div style={{width:38,height:38,borderRadius:8,background:f.col,border:`2px solid ${fitz===f.n?"var(--gd)":"rgba(255,255,255,.15)"}`,flexShrink:0,transition:"border-color .2s"}}/>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".18rem"}}>
+                  <span style={{fontFamily:"Cormorant Garamond,serif",fontSize:"1.1rem",color:fitz===f.n?"var(--gd)":"var(--wt)",fontWeight:400}}>Tipo {f.n}</span>
+                  <span style={{fontSize:".82rem",color:fitz===f.n?"var(--gd)":"rgba(245,237,224,.75)",fontWeight:500}}>{f.label}</span>
+                </div>
+                <div style={{fontSize:".74rem",color:"var(--st)"}}>{f.desc}</div>
+                <div style={{fontSize:".7rem",color:"rgba(245,237,224,.35)",marginTop:".1rem"}}>{f.sun}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div style={{textAlign:"center"}}>
+          <button className="btn btn-g" disabled={!fitz} onClick={()=>finishFitz(fitz)}>Continuar →</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // FORMA DE CARA
+  if(screen==="face") return(
+    <div style={{minHeight:"100vh",background:"var(--bg)",padding:"1.2rem"}}>
+      <style>{CSS}</style>
+      <div style={{maxWidth:680,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:"1.3rem"}}>
+          <button className="btn btn-o" onClick={()=>setScreen("fitzpatrick")}>← Atrás</button>
+          <button className="btn btn-o" onClick={()=>setScreen("iris")}>Saltar →</button>
+        </div>
+        <div className="tag" style={{marginBottom:".7rem"}}>Morfología facial</div>
+        <h2 className="cg" style={{fontSize:"clamp(1.3rem,3vw,1.8rem)",fontWeight:300,marginBottom:".35rem"}}>
+          ¿Forma de <em className="gd">tu cara</em>?
+        </h2>
+        <p style={{fontSize:".78rem",color:"var(--st)",marginBottom:"1.4rem"}}>Mírate con el cabello recogido.</p>
+        <div className="g3" style={{marginBottom:"1.4rem"}}>
+          {FACE_SHAPES.map(f=>(
+            <button key={f.id} className="btn card" style={{textAlign:"left",cursor:"pointer",borderColor:face===f.id?"var(--gd)":undefined,background:face===f.id?"rgba(200,169,126,.08)":undefined}}
+              onClick={()=>setFace(f.id)}>
+              <div style={{marginBottom:".5rem",lineHeight:0}} dangerouslySetInnerHTML={{__html:FACE_SVG[f.id]}}/>
+              <div style={{fontWeight:500,fontSize:".88rem",color:face===f.id?"var(--gd)":"var(--wt)",marginBottom:".28rem"}}>{f.label}</div>
+              <div style={{fontSize:".71rem",color:"var(--st)",lineHeight:1.4}}>{f.desc}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{textAlign:"center"}}>
+          <button className="btn btn-g" disabled={!face} onClick={()=>setScreen("iris")}>Continuar →</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // COLOR DE OJOS
+  if(screen==="iris") return(
+    <div style={{minHeight:"100vh",background:"var(--bg)",padding:"1.2rem"}}>
+      <style>{CSS}</style>
+      <div style={{maxWidth:500,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:"1.3rem"}}>
+          <button className="btn btn-o" onClick={()=>setScreen("face")}>← Atrás</button>
+          <button className="btn btn-o" onClick={()=>setScreen("age")}>Saltar →</button>
+        </div>
+        <div className="tag" style={{marginBottom:".7rem"}}>Cromatismo de ojos</div>
+        <h2 className="cg" style={{fontSize:"clamp(1.3rem,3vw,1.8rem)",fontWeight:300,marginBottom:".35rem"}}>
+          Color de <em className="gd">tus ojos</em>
+        </h2>
+        <p style={{fontSize:".78rem",color:"var(--st)",marginBottom:"1.4rem"}}>Para recomendarte sombras optimizadas para tu iris.</p>
+        <div style={{display:"flex",flexDirection:"column",gap:".65rem",marginBottom:"1.4rem"}}>
+          {OJOS.map(o=>(
+            <button key={o.iris} className="btn card" style={{textAlign:"left",padding:".85rem 1.2rem",cursor:"pointer",display:"flex",alignItems:"center",gap:"1.1rem",borderColor:iris===o.iris?"var(--gd)":undefined,background:iris===o.iris?"rgba(200,169,126,.08)":undefined}}
+              onClick={()=>setIris(o.iris)}>
+              <span style={{lineHeight:0,flexShrink:0,filter:iris===o.iris?"drop-shadow(0 0 4px rgba(200,169,126,0.5))":"none",transition:"filter .2s"}} dangerouslySetInnerHTML={{__html:IRIS_SVG[o.key]}}/>
+              <span style={{fontSize:".88rem",fontWeight:iris===o.iris?500:400,color:iris===o.iris?"var(--gd)":"rgba(245,237,224,.85)"}}>{o.iris}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{textAlign:"center"}}>
+          <button className="btn btn-g" onClick={()=>setScreen("age")}>Continuar →</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // EDAD
+  if(screen==="age") return(
+    <div style={{minHeight:"100vh",background:"var(--bg)",padding:"1.2rem"}}>
+      <style>{CSS}</style>
+      <div style={{maxWidth:460,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:"1.3rem"}}>
+          <button className="btn btn-o" onClick={()=>setScreen("iris")}>← Atrás</button>
+          <button className="btn btn-o" onClick={()=>setScreen("results")}>Saltar →</button>
+        </div>
+        <div className="tag" style={{marginBottom:".7rem"}}>Ajuste por edad</div>
+        <h2 className="cg" style={{fontSize:"clamp(1.3rem,3vw,1.8rem)",fontWeight:300,marginBottom:".35rem"}}>
+          ¿Cuántos <em className="gd">años tienes</em>?
+        </h2>
+        <p style={{fontSize:".78rem",color:"var(--st)",marginBottom:"1.8rem"}}>La técnica y textura óptimas evolucionan con las décadas.</p>
+        <input type="range" min={18} max={80} value={age} step={1} onChange={e=>setAge(+e.target.value)}/>
+        <div style={{textAlign:"center",margin:"1rem 0"}}>
+          <span className="cg" style={{fontSize:"3.2rem",color:"var(--gd)",fontWeight:300}}>{age}</span>
+          <span style={{fontSize:"1rem",color:"var(--st)",marginLeft:".4rem"}}>años</span>
+        </div>
+        {ageR&&<div className="info" style={{marginBottom:"1.4rem"}}>
+          <b>Base:</b> {ageR.base} · <b>Labial:</b> {ageR.lab}<br/>
+          <b>Saturación:</b> {ageR.sat}<br/>
+          <span style={{color:"rgba(245,237,224,.65)"}}>{ageR.tip}</span>
+        </div>}
+        <div style={{textAlign:"center"}}>
+          <button className="btn btn-g" onClick={()=>setScreen("results")}>Ver resultados ✨</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // RESULTADOS
+  if(screen==="results"&&s){
+    const irisData=iris?OJOS.find(o=>o.iris===iris):null;
+    const mk=s.maquillaje;
+    return(
+      <div style={{minHeight:"100vh",background:"var(--bg)"}}>
+        <style>{CSS}</style>
+        {/* HERO */}
+        <div style={{background:`linear-gradient(135deg,#100d08,${s.ac}20)`,padding:"2.2rem 1.3rem",borderBottom:"1px solid var(--bd)"}}>
+          <div style={{maxWidth:780,margin:"0 auto"}}>
+            <div style={{fontSize:".7rem",letterSpacing:".16em",color:"var(--st)",textTransform:"uppercase",fontFamily:"Jost,sans-serif",marginBottom:".6rem"}}>MATIZ · Tu estación cromática</div>
+            <h1 className="cg" style={{fontSize:"clamp(2rem,5vw,3rem)",fontWeight:300,marginBottom:".35rem"}}>
+              {s.e} <em style={{color:s.ac}}>{s.label}</em>
+            </h1>
+            <p style={{fontSize:".78rem",color:"var(--st)",letterSpacing:".12em",textTransform:"uppercase",fontFamily:"Jost,sans-serif",marginBottom:".75rem"}}>{s.sub}</p>
+            <p style={{fontSize:".86rem",color:"rgba(245,237,224,.7)",lineHeight:1.65,maxWidth:540,marginBottom:"1rem"}}>{s.desc}</p>
+            <div style={{display:"flex",gap:".55rem",flexWrap:"wrap"}}>
+              <span className="tag">CIELAB: {s.cielab}</span>
+              <span className="tag">Pantone: {s.pantone}</span>
+              {fitzData&&<span className="tag" style={{display:"inline-flex",alignItems:"center",gap:".35rem"}}><span style={{width:10,height:10,borderRadius:"50%",background:fitzData.col,display:"inline-block"}}/>Fitzpatrick {fitzData.n} · {fitzData.label}</span>}
+              {faceData&&<span className="tag">Cara {faceData.label}</span>}
+              {iris&&<span className="tag">Ojos {iris.toLowerCase()}</span>}
+              <span className="tag">{age} años</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{maxWidth:780,margin:"0 auto",padding:"1.5rem 1.1rem"}}>
+
+          {/* PALETA */}
+          <Acc title="Paleta & Colores" icon="🎨" open={true}>
+            <div className="g2">
+              <div>
+                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#4ade80",marginBottom:".6rem"}}>✅ Tus colores</p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:".6rem"}}>{s.pal.map(c=><Chip key={c.n} h={c.h} n={c.n}/>)}</div>
+              </div>
+              <div>
+                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#f87171",marginBottom:".6rem"}}>❌ Evitar</p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:".6rem"}}>{s.evitar.map(c=><div key={c.n} style={{textAlign:"center"}}><div style={{width:46,height:46,borderRadius:9,background:c.h,border:"2px solid #f87171",opacity:.55,margin:"0 auto .28rem"}}/><span style={{fontSize:".6rem",color:"rgba(245,237,224,.4)"}}>{c.n}</span></div>)}</div>
+              </div>
+            </div>
+          </Acc>
+
+          {/* MAQUILLAJE TÉCNICA */}
+          <Acc title="Técnica de maquillaje" icon="💄" open={true}>
+            <div className="info" style={{marginBottom:"1rem"}}><b>Acabado:</b> {mk.acabado} · <b>Cobertura:</b> {mk.cobertura}</div>
+            <div className="g2">
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Rubor</p>
+                <p style={{fontSize:".82rem",color:"rgba(245,237,224,.8)",marginBottom:".2rem"}}>{mk.rubor.color}</p>
+                <p style={{fontSize:".75rem",color:"var(--st)"}}>Acabado: {mk.rubor.acabado}</p>
+              </div>
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Labial</p>
+                <div style={{display:"flex",flexWrap:"wrap",marginBottom:".3rem"}}>{mk.labial.colores.map(c=><Pill key={c} t={c}/>)}</div>
+                <p style={{fontSize:".75rem",color:"var(--st)"}}>Acabado: {mk.labial.acabado}</p>
+              </div>
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Sombras</p>
+                <p style={{fontSize:".82rem",color:"rgba(245,237,224,.8)",marginBottom:".2rem"}}>{mk.sombras.paleta}</p>
+                <p style={{fontSize:".75rem",color:"var(--st)"}}>{mk.sombras.tecnica}</p>
+              </div>
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Delineado</p>
+                <p style={{fontSize:".82rem",color:"rgba(245,237,224,.8)",marginBottom:".2rem"}}>{mk.delineado.color}</p>
+                <p style={{fontSize:".75rem",color:"var(--st)"}}>{mk.delineado.tecnica}</p>
+              </div>
+            </div>
+            <div className="sep"/>
+            <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".35rem"}}>Corrector de color</p>
+            <p style={{fontSize:".82rem",color:"rgba(245,237,224,.78)"}}>{mk.corrector}</p>
+          </Acc>
+
+          {/* PRODUCTOS POR PRECIO */}
+          <Acc title="Productos · Máscara · Prebase · Fijador" icon="💄" open={true}>
+            <ProdTier productos={s.productos}/>
+          </Acc>
+
+          {/* BASES EQUIVALENCIAS */}
+          <Acc title="Equivalencias de bases por marca" icon="🧴">
+            <div className="g2">
+              {Object.entries(s.bases).map(([marca,refs])=>(
+                <div key={marca}>
+                  <p style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>{marca}</p>
+                  {refs.map(r=><div key={r} style={{fontSize:".82rem",color:"rgba(245,237,224,.78)",padding:".2rem 0",borderBottom:"1px solid rgba(200,169,126,.1)"}}>{r}</div>)}
+                </div>
+              ))}
+            </div>
+            <div className="info" style={{marginTop:"1rem",fontSize:".78rem"}}>
+              <b>ΔE objetivo &lt; 2</b> bajo luz natural (D65). Valida siempre en la mandíbula antes de comprar.
+            </div>
+          </Acc>
+
+          {/* OJOS POR IRIS */}
+          {irisData&&(
+            <Acc title={`Sombras · ojos ${irisData.iris.toLowerCase()}`} icon={<span style={{lineHeight:0,display:"inline-flex",verticalAlign:"middle",transform:"scale(0.72)",transformOrigin:"center"}} dangerouslySetInnerHTML={{__html:IRIS_SVG[irisData.key]}}/>} open={true}>
+              <div className="g2">
+                <div>
+                  <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#4ade80",marginBottom:".5rem"}}>✅ Potencian tu iris</p>
+                  <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".4rem"}}>
+                    {irisData.fav.map((f,i)=>(
+                      <li key={i} style={{display:"flex",gap:".6rem",fontSize:".82rem",color:"rgba(245,237,224,.82)",lineHeight:1.4}}>
+                        <span style={{color:"var(--gd)",flexShrink:0}}>→</span>{f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#f87171",marginBottom:".5rem"}}>❌ Evitar</p>
+                  <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".4rem"}}>
+                    {irisData.evitar.map((f,i)=>(
+                      <li key={i} style={{display:"flex",gap:".6rem",fontSize:".82rem",color:"rgba(245,237,224,.65)",lineHeight:1.4}}>
+                        <span style={{color:"#f87171",flexShrink:0}}>→</span>{f}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="info" style={{marginTop:".8rem",fontSize:".78rem"}}><b>Referencia:</b> {irisData.prod}</div>
+                </div>
+              </div>
+            </Acc>
+          )}
+
+          {/* CABELLO */}
+          <Acc title="Cabello & Color" icon="💇">
+            <div className="g2">
+              <div>
+                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#4ade80",marginBottom:".5rem"}}>✅ Tonos favorables</p>
+                <div style={{display:"flex",flexWrap:"wrap"}}>{s.cabello.favorables.map(c=><Pill key={c} t={c}/>)}</div>
+              </div>
+              <div>
+                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#f87171",marginBottom:".5rem"}}>❌ Evitar</p>
+                <div style={{display:"flex",flexWrap:"wrap"}}>{s.cabello.evitar.map(c=><Pill key={c} t={c}/>)}</div>
+              </div>
+            </div>
+            <div className="sep"/>
+            <div className="g2">
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".35rem"}}>Mechas / Balayage</p>
+                <p style={{fontSize:".82rem",color:"rgba(245,237,224,.78)"}}>{s.cabello.mechas}</p>
+              </div>
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".35rem"}}>Gloss / Brillo</p>
+                <p style={{fontSize:".82rem",color:"rgba(245,237,224,.78)"}}>{s.cabello.brillo}</p>
+              </div>
+            </div>
+          </Acc>
+
+          {/* CARA */}
+          {faceData&&(
+            <Acc title={`Cara ${faceData.label} · técnicas`} icon="🧏‍♀️">
+              <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".5rem"}}>
+                {faceData.tec.map((t,i)=>(
+                  <li key={i} style={{display:"flex",gap:".7rem",fontSize:".83rem",color:"rgba(245,237,224,.8)",lineHeight:1.5}}>
+                    <span style={{color:"var(--gd)",flexShrink:0}}>→</span>{t}
+                  </li>
+                ))}
+              </ul>
+            </Acc>
+          )}
+
+          {/* CORRECTORES */}
+          <Acc title="Correctores de color" icon="🎭">
+            <p style={{fontSize:".8rem",color:"var(--st)",marginBottom:"1rem"}}>El color opuesto en el círculo cromático neutraliza. Subtono cálido y frío usan distintos correctores.</p>
+            {CORRECTORES.map(c=>(
+              <div key={c.p} style={{background:"rgba(200,169,126,.04)",border:"1px solid var(--bd)",borderRadius:10,padding:".9rem",marginBottom:".65rem"}}>
+                <p style={{fontSize:".82rem",fontWeight:500,color:"var(--wt)",marginBottom:".5rem"}}>{c.i} {c.p}</p>
+                <div className="g2">
+                  <p style={{fontSize:".78rem",color:"rgba(245,237,224,.72)"}}><span style={{color:"var(--gd)"}}>Cálido:</span> {c.cal}</p>
+                  <p style={{fontSize:".78rem",color:"rgba(245,237,224,.72)"}}><span style={{color:"var(--gd)"}}>Frío:</span> {c.frio}</p>
+                </div>
+                <p style={{fontSize:".74rem",color:"var(--st)",marginTop:".4rem",fontStyle:"italic"}}>{c.u}</p>
+              </div>
+            ))}
+          </Acc>
+
+          {/* EDAD */}
+          {ageR&&(
+            <Acc title={`Perfil de textura · ${age} años`} icon="📆">
+              <div style={{display:"flex",flexWrap:"wrap",gap:".7rem",marginBottom:".9rem"}}>
+                {[{l:"Saturación",v:ageR.sat},{l:"Base",v:ageR.base},{l:"Labial",v:ageR.lab}].map(r=>(
+                  <div key={r.l} style={{background:"rgba(200,169,126,.07)",border:"1px solid var(--bd)",borderRadius:10,padding:".6rem .9rem"}}>
+                    <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".08em",color:"var(--gd)",marginBottom:".18rem"}}>{r.l}</div>
+                    <div style={{fontSize:".85rem",fontWeight:500}}>{r.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="info">💡 {ageR.tip}</div>
+            </Acc>
+          )}
+
+          {/* CIENCIA */}
+          <Acc title="Biofísica & Ciencia del color" icon="🧬">
+            <div className="g2" style={{marginBottom:"1rem"}}>
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".5rem"}}>Pigmentos de tu piel</p>
+                {[{n:"Melanina",c:"Profundidad — marrón/negro/rojizo"},{n:"Hemoglobina",c:"Matices rosados o azulados"},{n:"Caroteno",c:"Matices dorados — subtono cálido"}].map(p=>(
+                  <div key={p.n} style={{padding:".4rem 0",borderBottom:"1px solid rgba(200,169,126,.1)"}}>
+                    <span style={{fontSize:".82rem",fontWeight:500,color:"var(--gd)"}}>{p.n}</span>
+                    <span style={{fontSize:".78rem",color:"rgba(245,237,224,.6)",marginLeft:".5rem"}}>→ {p.c}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".5rem"}}>CIELAB · tus coordenadas</p>
+                <div style={{background:"rgba(200,169,126,.07)",borderRadius:10,padding:".8rem",fontFamily:"Cormorant Garamond,serif",fontSize:"1rem",color:"var(--wt)"}}>{s.cielab}</div>
+                {fitzData&&<div style={{background:"rgba(200,169,126,.07)",borderRadius:10,padding:".8rem",marginTop:".6rem",display:"flex",alignItems:"center",gap:".7rem"}}>
+                  <div style={{width:28,height:28,borderRadius:6,background:fitzData.col,flexShrink:0}}/>
+                  <div>
+                    <div style={{fontSize:".78rem",color:"var(--wt)",fontWeight:500}}>Fitzpatrick {fitzData.n} · {fitzData.label}</div>
+                    <div style={{fontSize:".72rem",color:"var(--st)"}}>{fitzData.desc}</div>
+                  </div>
+                </div>}
+                <p style={{fontSize:".72rem",color:"var(--st)",marginTop:".5rem"}}>ΔE &lt; 2 → base imperceptible · ΔE &gt; 5 → incompatible</p>
+              </div>
+            </div>
+            <div className="info">
+              <b>Subtono:</b> constante biológica — no cambia con el bronceado. Determinado por eumelanina/feomelanina y distribución vascular.<br/>
+              <b>Ref:</b> CIE 15:2018 · Journal AIC 2019 · Munsell Color System · ISO 3668
+            </div>
+          </Acc>
+
+          <div style={{display:"flex",gap:".7rem",justifyContent:"center",flexWrap:"wrap",paddingBottom:"1.5rem",marginTop:".5rem"}}>
+            <button className="btn btn-g" onClick={reset}>🔄 Nuevo análisis</button>
+            <button className="btn btn-o" onClick={()=>setScreen("explore")}>💡 Luz & Metamerismo</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // EXPLORAR LUZ
+  if(screen==="explore") return(
+    <div style={{minHeight:"100vh",background:"var(--bg)"}}>
+      <style>{CSS}</style>
+      <div style={{padding:"1rem 1.3rem",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid var(--bd)"}}>
+        <button className="btn btn-o" onClick={()=>setScreen(season?"results":"home")}>← Atrás</button>
+        <span className="cg" style={{color:"var(--gd)",fontStyle:"italic",fontSize:"1.1rem"}}>Luz & Metamerismo</span>
+        <div style={{width:60}}/>
+      </div>
+      <div style={{maxWidth:740,margin:"0 auto",padding:"1.8rem 1.2rem"}}>
+        <div className="info" style={{marginBottom:"1.4rem"}}>
+          <b>Metamerismo:</b> un producto puede verse perfecto bajo luz natural y completamente distinto bajo LED de oficina — cada fuente tiene un espectro diferente que activa distintos pigmentos.
+        </div>
+        <div style={{display:"flex",gap:".55rem",flexWrap:"wrap",marginBottom:"1.3rem"}}>
+          {LIGHTS.map(l=>(
+            <button key={l.id} className="btn" style={{padding:".5rem .95rem",borderRadius:40,fontSize:".77rem",cursor:"pointer",border:`1px solid ${lightId===l.id?l.col:"rgba(200,169,126,.2)"}`,background:lightId===l.id?`${l.col}18`:"transparent",color:lightId===l.id?l.col:"rgba(245,237,224,.55)"}}
+              onClick={()=>setLightId(l.id)}>
+              {l.e} {l.n}
+            </button>
+          ))}
+        </div>
+        {light&&(
+          <div className="card" style={{marginBottom:"1.3rem"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"1rem",marginBottom:".85rem"}}>
+              <div style={{fontSize:"2.2rem"}}>{light.e}</div>
+              <div style={{flex:1}}>
+                <h3 className="cg" style={{fontSize:"1.2rem",fontWeight:300,color:light.col}}>{light.n}</h3>
+                <span style={{fontSize:".7rem",color:"var(--st)"}}>{light.sub}</span>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div className="cg" style={{fontSize:"2.2rem",color:light.col,fontWeight:300,lineHeight:1}}>{light.cri}</div>
+                <div style={{fontSize:".6rem",color:"var(--st)",textTransform:"uppercase"}}>CRI</div>
+              </div>
+            </div>
+            <div style={{height:6,background:"rgba(200,169,126,.1)",borderRadius:6,overflow:"hidden",marginBottom:".8rem"}}>
+              <div style={{height:"100%",width:`${light.cri}%`,background:light.col,borderRadius:6,transition:"width .5s"}}/>
+            </div>
+            <p style={{fontSize:".82rem",color:"rgba(245,237,224,.7)",lineHeight:1.6}}>
+              {light.id==="d65"?"Referencia absoluta. Aquí los colores son reales. Una base perfecta bajo D65 es fiable en cualquier entorno.":
+               light.id==="led_pro"?"Casi perfecto. Usado en estudios de maquillaje y cabinas profesionales. Mínima distorsión.":
+               light.id==="fluor"?"Déficit en rojo (R9 bajo). La piel puede verse cetrina y el maquillaje apagado o grisáceo.":
+               light.id==="led_malo"?"Distorsión notable. Una base 'perfecta' en casa puede volverse gris o anaranjada aquí.":
+               "Distorsión extrema. Colores irreconocibles. Nunca elegir maquillaje bajo esta luz."}
+            </p>
+          </div>
+        )}
+        <div className="card" style={{marginBottom:"1.3rem"}}>
+          <h3 className="cg" style={{fontSize:"1.1rem",fontWeight:300,marginBottom:".3rem"}}>
+            Simulación visual de <span className="gd">metamerismo</span>
+            {season&&s&&<span style={{fontSize:".72rem",color:"var(--st)",fontFamily:"Jost,sans-serif",marginLeft:".6rem"}}>· bases de {s.label}</span>}
+          </h3>
+          <div className="div"/>
+          {!season&&<p style={{fontSize:".78rem",color:"var(--st)",marginBottom:"1rem",fontStyle:"italic"}}>Completa el quiz para ver las bases específicas de tu estación.</p>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:".8rem"}}>
+            {(season?BASE_HEX[season]:[
+              {ref:"Cálida clara",h:"#F0B48C",nota:"Primavera"},
+              {ref:"Fría clara",h:"#E8CCCA",nota:"Verano"},
+              {ref:"Cálida profunda",h:"#C8A07A",nota:"Otoño"},
+              {ref:"Fría profunda",h:"#E4CECC",nota:"Invierno"},
+            ]).map((b,i)=>(
+              <div key={i}>
+                <div style={{height:70,borderRadius:10,background:b.h,filter:light?.f||"none",border:"1px solid rgba(200,169,126,.2)",marginBottom:".5rem",transition:"filter .6s ease",boxShadow:"0 2px 8px rgba(0,0,0,.25)"}}/>
+                <div style={{fontSize:".75rem",fontWeight:500,color:"var(--wt)",lineHeight:1.3}}>{b.ref}</div>
+                <div style={{fontSize:".66rem",color:"var(--st)",marginTop:".12rem"}}>{b.nota}</div>
+                <div style={{fontSize:".6rem",fontFamily:"monospace",color:"rgba(200,169,126,.35)",marginTop:".08rem"}}>{b.h}</div>
+              </div>
+            ))}
+          </div>
+          {season&&s&&(
+            <div style={{marginTop:"1rem",padding:".7rem .9rem",background:"rgba(200,169,126,.05)",borderRadius:8,border:"1px solid rgba(200,169,126,.12)"}}>
+              <p style={{fontSize:".75rem",color:"var(--st)"}}>
+                <span style={{color:light?.col}}>⚠️</span> Bajo <strong style={{color:light?.col}}>{light?.n}</strong> (CRI {light?.cri}){light?.cri<85?" los subtonos se distorsionan — lo que ves no es el color real de la base.":" el color se mantiene próximo al real."}
+              </p>
+            </div>
+          )}
+          <p style={{fontSize:".67rem",color:"rgba(245,237,224,.22)",marginTop:".8rem",fontStyle:"italic"}}>
+            {season?"Hex aproximados de tus bases recomendadas. El efecto real varía según pigmento y formulación.":"Completa el quiz para ver tus bases específicas."}
+          </p>
+        </div>
+        <div className="info">
+          <b>Protocolo ISO 3668:</b> valida siempre bajo D65. ΔE &lt; 2 = fiable en cualquier entorno. Falla D65 → no recomendar. Solo falla LED barato → usar con reservas.
+        </div>
+        {season&&<div style={{textAlign:"center",marginTop:"1.4rem"}}>
+          <button className="btn btn-g" onClick={()=>setScreen("results")}>← Mis resultados</button>
+        </div>}
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
