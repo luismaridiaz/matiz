@@ -5,26 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>MATIZ · Colorimetría de piel y maquillaje</title>
   <script>
-    // Suprimir aviso de desarrollo de Babel (solo informativo, no afecta al funcionamiento)
-    const _cw = console.warn;
-    console.warn = function(...a) {
-      if (a[0] && typeof a[0] === 'string' && a[0].includes('Babel')) return;
-      _cw.apply(console, a);
-    };
+    const _cw=console.warn;
+    console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('Babel'))return;_cw.apply(console,a);};
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <style>
-    body { margin: 0; padding: 0; }
-    #root { min-height: 100vh; }
-  </style>
+  <style>body{margin:0;padding:0}#root{min-height:100vh}</style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
     const { useState } = React;
-
 
 // ── FITZPATRICK ───────────────────────────────────────────────
 const FITZ = [
@@ -216,32 +208,68 @@ const IRIS_SVG = {
 const OJOS=[
   {iris:"Azules", key:"azules",
    fav:["Bronce y cobre — la regla de oro para ojos azules","Terracota y naranja quemado","Marrón chocolate","Dorado y melocotón cálido"],
+   favHex:["#A86028","#C06830","#5A2810","#D4A030"],
    evitar:["Azul del mismo tono — se anulan","Azul eléctrico — compite con el iris"],
+   evitarHex:["#3A70C0","#0050FF"],
    prod:"Urban Decay Naked Heat · Too Faced Sweet Peach"},
   {iris:"Verdes", key:"verdes",
    fav:["Borgoña y ciruela — el complementario perfecto","Berenjena y violeta","Rojo vino","Malva y rosa oscuro"],
+   favHex:["#780828","#604878","#800020","#C06890"],
    evitar:["Verde similar al iris — desaparece","Caqui muy parecido al iris"],
+   evitarHex:["#4A8050","#7A8050"],
    prod:"Charlotte Tilbury Dolce Vita · Urban Decay Midnight Cowgirl"},
   {iris:"Marrones", key:"marrones",
    fav:["Dorado y bronce — activan los puntos dorados del iris","Azul marino y cobalto — contraste máximo","Malva y ciruela","Verde esmeralda"],
+   favHex:["#C89030","#102070","#905878","#006040"],
    evitar:["Marrón claro del mismo tono — se pierden","Beige sin shimmer"],
+   evitarHex:["#C09878","#D4B890"],
    prod:"Urban Decay Naked · Too Faced Chocolate Bar"},
   {iris:"Avellana", key:"avellana",
    fav:["Verde musgo y oliva — activan el verde del iris","Cobre y bronce","Morado suave","Dorado rosado"],
+   favHex:["#4A6030","#904820","#805878","#C89068"],
    evitar:["Gris frío — apaga la calidez","Rosas muy fríos"],
+   evitarHex:["#8090A0","#E090B0"],
    prod:"Too Faced Natural Love · Anastasia Beverly Hills Soft Glam"},
   {iris:"Grises", key:"grises",
-   fav:["Azul marino","Violeta","Verde esmeralda","Negro ahumado — los grises admiten todo con contraste"],
+   fav:["Azul marino","Violeta","Verde esmeralda","Negro ahumado"],
+   favHex:["#102060","#603880","#005038","#181818"],
    evitar:["Gris del mismo tono — se pierden","Beige neutro sin contraste"],
+   evitarHex:["#808898","#C8B898"],
    prod:"Urban Decay Midnight Cowgirl · Natasha Denona Black Swan"},
 ];
 
 // ── CORRECTORES DE COLOR ──────────────────────────────────────
 const CORRECTORES=[
-  {p:"Ojeras azul-violáceas",i:"👁️",cal:"Durazno-naranja (subtono cálido)",frio:"Rosa-lila (subtono frío)",u:"El naranja cancela el azul por contraste complementario",prod:"NARS Creamy Concealer · IT Cosmetics Bye Bye Under Eye"},
-  {p:"Rojeces y acné",i:"🔴",cal:"Verde cálido o amarillo suave",frio:"Verde puro frío",u:"El verde cancela el rojo — universal para todas las estaciones",prod:"NYX Color Correcting Palette · Catrice Colour Corrector"},
-  {p:"Manchas marrones",i:"🟤",cal:"Lila cálido o durazno en manchas oscuras",frio:"Lila frío o lavanda",u:"El morado-lavanda neutraliza los marrones por contraste",prod:"L.A. Girl HD Pro · ColourPop No Filter Concealer"},
-  {p:"Zonas amarillentas",i:"🟡",cal:"Morado suave (en capas muy finas)",frio:"Violeta frío",u:"El morado cancela el amarillo — aplicar con extrema delicadeza",prod:"NARS Radiant Creamy · Dermacol Corrector"},
+  {p:"Ojeras azul-violáceas",i:"👁️",
+   cal:"Durazno-naranja",calHex:"#F4906A",
+   frio:"Rosa-lila",frioHex:"#E8A8C8",
+   cancelaHex:"#3848B0",
+   u:"El naranja cancela el azul por contraste complementario",
+   prod:"NARS Creamy Concealer · IT Cosmetics Bye Bye Under Eye"},
+  {p:"Rojeces y acné",i:"🔴",
+   cal:"Verde cálido o amarillo suave",calHex:"#80A840",
+   frio:"Verde puro frío",frioHex:"#50A860",
+   cancelaHex:"#D03020",
+   u:"El verde cancela el rojo — universal para todas las estaciones",
+   prod:"NYX Color Correcting Palette · Catrice Colour Corrector"},
+  {p:"Manchas marrones",i:"🟤",
+   cal:"Lila cálido",calHex:"#C098C0",
+   frio:"Lavanda fría",frioHex:"#A888C8",
+   cancelaHex:"#806040",
+   u:"El morado-lavanda neutraliza los marrones por contraste",
+   prod:"L.A. Girl HD Pro · ColourPop No Filter Concealer"},
+  {p:"Zonas amarillentas",i:"🟡",
+   cal:"Morado suave",calHex:"#B090C0",
+   frio:"Violeta frío",frioHex:"#8060B0",
+   cancelaHex:"#D0C040",
+   u:"El morado cancela el amarillo — aplicar en capas muy finas",
+   prod:"NARS Radiant Creamy · Dermacol Corrector"},
+  {p:"Palidez extrema o zonas grises",i:"⚪",
+   cal:"Naranja o melocotón intenso",calHex:"#F08050",
+   frio:"Rosa intenso",frioHex:"#D05878",
+   cancelaHex:"#C0C0C0",
+   u:"Los cálidos corrigen la muerte del color en pieles muy pálidas",
+   prod:"NYX Peach Corrector · Fenty Beauty Concealer"},
 ];
 
 // ── HEX DE BASES POR ESTACIÓN (para simulador de metamerismo) ─
@@ -290,11 +318,11 @@ const SEASONS={
     evitar:[{h:"#800080",n:"Morado"},{h:"#000080",n:"Azul marino"},{h:"#696969",n:"Gris frío"},{h:"#8B0000",n:"Granate frío"}],
     maquillaje:{
       acabado:"Satinado o dewy — nunca mate total",cobertura:"Ligera a media",
-      rubor:{color:"Coral, melocotón o durazno cálido",acabado:"Satinado o shimmer fino"},
-      labial:{colores:["Coral","Melocotón","Rojo anaranjado","Nude dorado","Salmón"],acabado:"Satinado o cremoso"},
-      sombras:{paleta:"Dorado, coral, terracota clara, beige, verde menta",tecnica:"Shimmer en párpado móvil, difuminado cálido"},
-      delineado:{color:"Marrón cálido o bronce",tecnica:"Fino y natural o ahumado cálido"},
-      corrector:"Durazno-melocotón para ojeras · verde para rojeces",
+      rubor:{color:"Coral, melocotón o durazno cálido",hex:["#F08060","#FFB07A","#F4956A"],acabado:"Satinado o shimmer fino"},
+      labial:{colores:["Coral","Melocotón","Rojo anaranjado","Nude dorado","Salmón"],hex:["#E05030","#F07848","#C84010","#C87848","#E87060"],acabado:"Satinado o cremoso"},
+      sombras:{paleta:"Dorado, coral, terracota clara, beige, verde menta",hex:["#D4A030","#E89070","#C07050","#D4B890","#90C898"],tecnica:"Shimmer en párpado móvil · difuminado cálido"},
+      delineado:{color:"Marrón cálido o bronce",hex:["#5A2810","#7A4A28"],tecnica:"Fino y natural o ahumado cálido"},
+      corrector:{subtono:"Durazno-melocotón para ojeras",hex:["#F4A878"],notas:"Verde cancela rojeces en cualquier estación"},
     },
     productos:{
     eco:[
@@ -359,7 +387,11 @@ const SEASONS={
   },
     cabello:{
       favorables:["Castaño dorado","Rubio miel","Cobrizo","Caramelo","Balayage beige-dorado"],
+      favorHex:["#7A4A18", "#C89840", "#A05020", "#C07830", "#D4A860"],
+      favorHex:["#7A4A18","#C89840","#A05020","#C07830","#D4A860"],
       evitar:["Negro azulado","Ceniza frío","Platino frío"],
+      evitarHex:["#101828", "#909898", "#D0D0D0"],
+      evitarHex:["#101828","#909898","#D0D0D0"],
       mechas:"Balayage miel, caramelo y dorado",brillo:"Gloss transparente o dorado",
     },
     bases:{MAC:["NC20","NC25"],Catrice:["True Skin 012","True Skin 010"],Loreal:["True Match W2","True Match C2"],Armani:["Luminous Silk 4","4.5"],Charlotte:["Airbrush Flawless 3W"],Estee:["Double Wear 2N1","1W2"]},
@@ -375,12 +407,12 @@ const SEASONS={
     ],
     evitar:[{h:"#FF8C00",n:"Naranja"},{h:"#8B4513",n:"Marrón cálido"},{h:"#DAA520",n:"Mostaza"},{h:"#FF4500",n:"Rojo cálido"}],
     maquillaje:{
-      acabado:"Satinado suave o semimate",cobertura:"Media — unificar sin borrar el frescor rosado",
-      rubor:{color:"Rosa frío, malva o frambuesa suave",acabado:"Satinado o shimmer muy suave"},
-      labial:{colores:["Rosa empolvado","Malva","Frambuesa","Nude rosado frío","Borgoña suave"],acabado:"Satinado o cremoso — nunca mate opaco"},
-      sombras:{paleta:"Lilas, rosas fríos, malva, gris plateado, ciruela",tecnica:"Difuminado suave, acabados semi-brillantes"},
-      delineado:{color:"Gris marengo, borgoña suave o marrón oscuro frío",tecnica:"Fino o cat eye suave"},
-      corrector:"Rosa pálido o lila para ojeras · verde suave para rojeces leves",
+      acabado:"Satinado suave o semimate — los mates totales apagan",cobertura:"Media — unificar sin borrar el frescor rosado",
+      rubor:{color:"Rosa frío, malva o frambuesa suave",hex:["#E090A8","#C07898","#B05870"],acabado:"Satinado o shimmer suave"},
+      labial:{colores:["Rosa empolvado","Malva","Frambuesa","Nude rosado frío","Borgoña suave"],hex:["#E09098","#B07890","#B04868","#D09898","#803048"],acabado:"Satinado o cremoso — nunca mate opaco"},
+      sombras:{paleta:"Lilas, rosas fríos, malva, gris plateado, ciruela",hex:["#C0A8D0","#D898B8","#A880B0","#A0A8B8","#705870"],tecnica:"Difuminado suave · acabados semi-brillantes"},
+      delineado:{color:"Gris marengo o borgoña suave",hex:["#505868","#703040"],tecnica:"Fino y natural · cat eye suave"},
+      corrector:{subtono:"Rosa pálido o lila para ojeras azuladas",hex:["#E8B8C8"],notas:"Verde suave para rojeces o rosácea leve"},
     },
     productos:{
     eco:[
@@ -445,7 +477,9 @@ const SEASONS={
   },
     cabello:{
       favorables:["Castaño ceniza","Rubio ceniza","Platino suave","Mechones plateados"],
+      favorHex:["#605858", "#B0A080", "#D0C8C0", "#B8B8C0", "#C0B8B0"],
       evitar:["Caoba cálido","Dorado intenso","Cobrizo"],
+      evitarHex:["#702010", "#C09020", "#A02010", "#A04818"],
       mechas:"Babylights platino o ceniza, balayage gris-perla",brillo:"Gloss violeta o neutro",
     },
     bases:{MAC:["NW15","NW20"],Catrice:["HD Liquid 006","True Skin 004"],Loreal:["True Match N2","R1C1"],Armani:["Luminous Silk 3","3.5"],Charlotte:["Light Wonder 3"],Estee:["Double Wear 1N1","2C1"]},
@@ -461,12 +495,12 @@ const SEASONS={
     ],
     evitar:[{h:"#FF69B4",n:"Rosa frío"},{h:"#E6E6FA",n:"Lavanda"},{h:"#00BFFF",n:"Azul neón"},{h:"#000000",n:"Negro puro"}],
     maquillaje:{
-      acabado:"Satinado o luminoso",cobertura:"Media a alta",
-      rubor:{color:"Terracota, melocotón oscuro, bronce rosado",acabado:"Satinado o shimmer cálido"},
-      labial:{colores:["Terracota","Siena","Marrón cálido","Nude cálido oscuro","Rojo ladrillo"],acabado:"Cremoso o satinado"},
-      sombras:{paleta:"Terracota, cobre, bronce, verde oliva, mostaza",tecnica:"Ahumado cálido, shimmer bronce"},
-      delineado:{color:"Marrón chocolate o negro cálido",tecnica:"Ahumado suave o liner marrón preciso"},
-      corrector:"Salmón-durazno para ojeras · verde para rojeces",
+      acabado:"Satinado o luminoso — los mates totales apagan la profundidad",cobertura:"Media a alta — unificar el tono profundo",
+      rubor:{color:"Terracota, melocotón oscuro, bronce rosado",hex:["#C05030","#D07840","#A86028"],acabado:"Satinado o shimmer cálido"},
+      labial:{colores:["Terracota","Siena","Marrón cálido","Nude oscuro cálido","Rojo ladrillo"],hex:["#B84020","#A03818","#783010","#A86040","#902818"],acabado:"Cremoso o satinado — nunca gloss muy brillante"},
+      sombras:{paleta:"Terracota, cobre, bronce, verde oliva, mostaza, marrón",hex:["#C05030","#A85020","#886020","#587030","#C09020","#603018"],tecnica:"Ahumado cálido · shimmer bronce en capas"},
+      delineado:{color:"Marrón chocolate o negro cálido",hex:["#381008","#201008"],tecnica:"Ahumado suave o liner preciso marrón"},
+      corrector:{subtono:"Salmón-durazno para ojeras cálidas",hex:["#F09868"],notas:"Verde para rojeces y acné"},
     },
     productos:{
     eco:[
@@ -531,7 +565,9 @@ const SEASONS={
   },
     cabello:{
       favorables:["Castaño rojizo","Cobrizo","Auburn","Caramelo intenso","Balayage terracota"],
+      favorHex:["#602010", "#903818", "#7A2808", "#C07030", "#B04820", "#A04018"],
       evitar:["Platino frío","Ceniza fría","Negro azulado"],
+      evitarHex:["#D0C8C0", "#909090", "#101828"],
       mechas:"Balayage terracota o cobre sobre base castaño",brillo:"Gloss cobrizo o caramelo",
     },
     bases:{MAC:["NC30","NC35","NC40"],Catrice:["True Skin 030","True Skin 040"],Loreal:["True Match 3W","4W"],Armani:["Luminous Silk 6","7"],Charlotte:["Airbrush Flawless 5W"],Estee:["Double Wear 3W1","3W2"]},
@@ -547,12 +583,12 @@ const SEASONS={
     ],
     evitar:[{h:"#DAA520",n:"Mostaza"},{h:"#8B4513",n:"Terracota"},{h:"#F5DEB3",n:"Beige cálido"},{h:"#D2B48C",n:"Camel"}],
     maquillaje:{
-      acabado:"Mate o satinado",cobertura:"Media a alta — la piel impecable es parte de la estética",
-      rubor:{color:"Rosa frío, frambuesa, borgoña o fucsia suave",acabado:"Shimmer frío o semimate"},
-      labial:{colores:["Rojo rubí","Fucsia","Burdeos","Rojo frío puro","Borgoña profundo"],acabado:"Mate o satinado — el color puro es la clave"},
-      sombras:{paleta:"Negro, gris ahumado, azul cobalto, fucsia, ciruela, plata",tecnica:"Ahumado dramático, cat eye, cut crease"},
-      delineado:{color:"Negro puro — aquí el negro es protagonista",tecnica:"Liner preciso, cat eye dramático o smudged"},
-      corrector:"Rosa pálido o lila para ojeras · verde para rojeces",
+      acabado:"Mate o satinado — el acabado dramático define esta estación",cobertura:"Media a alta — la piel impecable es parte de la estética",
+      rubor:{color:"Rosa frío, frambuesa o fucsia suave",hex:["#D06898","#A82858","#C02888"],acabado:"Ligero shimmer frío o semimate"},
+      labial:{colores:["Rojo rubí","Fucsia","Burdeos","Rojo frío puro","Borgoña profundo"],hex:["#980818","#B81878","#700818","#C00018","#500010"],acabado:"Mate o satinado — la clave es el color puro"},
+      sombras:{paleta:"Negro, gris ahumado, azul cobalto, fucsia, ciruela, plata",hex:["#181818","#485058","#182898","#B01888","#501040","#A0A8B8"],tecnica:"Ahumado dramático · cut crease · liner preciso"},
+      delineado:{color:"Negro puro — aquí el negro es protagonista",hex:["#080808","#101010"],tecnica:"Liner preciso · cat eye dramático o smudged ahumado"},
+      corrector:{subtono:"Rosado pálido o lila para ojeras azul-violáceas",hex:["#D8A8C0"],notas:"Verde para rojeces · el Invierno puede tener rosácea leve"},
     },
     productos:{
     eco:[
@@ -617,7 +653,9 @@ const SEASONS={
   },
     cabello:{
       favorables:["Negro azabache","Castaño muy oscuro azulado","Platino puro","Rojo intenso frío"],
+      favorHex:["#080808", "#101520", "#E0D8D0", "#900020", "#302828"],
       evitar:["Castaño dorado","Cobrizo","Rubio miel"],
+      evitarHex:["#7A4A18", "#A04018", "#C89840", "#C07830"],
       mechas:"Mechones platino puro o colores fríos (violeta, azul)",brillo:"Gloss violeta o plateado",
     },
     bases:{MAC:["NW10","NW13"],Catrice:["HD Liquid 002","HD Liquid 004"],Loreal:["True Match C1","N1"],Armani:["Luminous Silk 2","2.5"],Charlotte:["Airbrush Flawless 2N"],Estee:["Double Wear 1C1","1N1"]},
@@ -992,32 +1030,72 @@ function App(){
             <div className="g2">
               <div>
                 <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Rubor</p>
+                <div style={{display:"flex",gap:".5rem",marginBottom:".5rem"}}>
+                  {(mk.rubor.hex||[]).map((col,i)=>(
+                    <div key={i} style={{textAlign:"center"}}>
+                      <div style={{width:36,height:36,borderRadius:8,background:col,border:"1px solid rgba(255,255,255,.12)",boxShadow:"0 2px 6px rgba(0,0,0,.3)"}}/>
+                      <div style={{fontSize:".58rem",color:"rgba(245,237,224,.35)",marginTop:".15rem",fontFamily:"monospace"}}>{col}</div>
+                    </div>
+                  ))}
+                </div>
                 <p style={{fontSize:".82rem",color:"rgba(245,237,224,.8)",marginBottom:".2rem"}}>{mk.rubor.color}</p>
                 <p style={{fontSize:".75rem",color:"var(--st)"}}>Acabado: {mk.rubor.acabado}</p>
               </div>
               <div>
                 <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Labial</p>
+                <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",marginBottom:".5rem"}}>
+                  {(mk.labial.hex||[]).map((col,i)=>(
+                    <div key={i} style={{textAlign:"center"}}>
+                      <div style={{width:36,height:36,borderRadius:8,background:col,border:"1px solid rgba(255,255,255,.12)",boxShadow:"0 2px 6px rgba(0,0,0,.3)"}}/>
+                      <div style={{fontSize:".58rem",color:"rgba(245,237,224,.35)",marginTop:".15rem",fontFamily:"monospace"}}>{col}</div>
+                    </div>
+                  ))}
+                </div>
                 <div style={{display:"flex",flexWrap:"wrap",marginBottom:".3rem"}}>{mk.labial.colores.map(c=><Pill key={c} t={c}/>)}</div>
                 <p style={{fontSize:".75rem",color:"var(--st)"}}>Acabado: {mk.labial.acabado}</p>
               </div>
               <div>
                 <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Sombras</p>
+                <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",marginBottom:".5rem"}}>
+                  {(mk.sombras.hex||[]).map((col,i)=>(
+                    <div key={i} style={{textAlign:"center"}}>
+                      <div style={{width:36,height:36,borderRadius:8,background:col,border:"1px solid rgba(255,255,255,.12)",boxShadow:"0 2px 6px rgba(0,0,0,.3)"}}/>
+                      <div style={{fontSize:".58rem",color:"rgba(245,237,224,.35)",marginTop:".15rem",fontFamily:"monospace"}}>{col}</div>
+                    </div>
+                  ))}
+                </div>
                 <p style={{fontSize:".82rem",color:"rgba(245,237,224,.8)",marginBottom:".2rem"}}>{mk.sombras.paleta}</p>
                 <p style={{fontSize:".75rem",color:"var(--st)"}}>{mk.sombras.tecnica}</p>
               </div>
               <div>
                 <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".4rem"}}>Delineado</p>
+                <div style={{display:"flex",gap:".5rem",marginBottom:".5rem"}}>
+                  {(mk.delineado.hex||[]).map((col,i)=>(
+                    <div key={i} style={{textAlign:"center"}}>
+                      <div style={{width:36,height:36,borderRadius:8,background:col,border:"1px solid rgba(255,255,255,.12)",boxShadow:"0 2px 6px rgba(0,0,0,.3)"}}/>
+                      <div style={{fontSize:".58rem",color:"rgba(245,237,224,.35)",marginTop:".15rem",fontFamily:"monospace"}}>{col}</div>
+                    </div>
+                  ))}
+                </div>
                 <p style={{fontSize:".82rem",color:"rgba(245,237,224,.8)",marginBottom:".2rem"}}>{mk.delineado.color}</p>
                 <p style={{fontSize:".75rem",color:"var(--st)"}}>{mk.delineado.tecnica}</p>
               </div>
             </div>
             <div className="sep"/>
             <p style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--gd)",marginBottom:".35rem"}}>Corrector de color</p>
-            <p style={{fontSize:".82rem",color:"rgba(245,237,224,.78)"}}>{mk.corrector}</p>
+            <div style={{display:"flex",alignItems:"center",gap:".8rem",marginBottom:".5rem"}}>
+              {(mk.corrector.hex||[]).map((col,i)=>(
+                <div key={i} style={{textAlign:"center"}}>
+                  <div style={{width:36,height:36,borderRadius:8,background:col,border:"1px solid rgba(255,255,255,.12)",boxShadow:"0 2px 6px rgba(0,0,0,.3)"}}/>
+                  <div style={{fontSize:".58rem",color:"rgba(245,237,224,.35)",marginTop:".15rem",fontFamily:"monospace"}}>{col}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{fontSize:".82rem",color:"rgba(245,237,224,.78)"}}>{mk.corrector.subtono}</p>
+            <p style={{fontSize:".75rem",color:"var(--st)",marginTop:".25rem"}}>{mk.corrector.notas}</p>
           </Acc>
 
-          {/* PRODUCTOS POR PRECIO */}
-          <Acc title="Productos · Máscara · Prebase · Fijador" icon="💄" open={true}>
+          <Acc title="Productos · Máscara · Prebase · Fijador" icon="💅" open={true}>
             <ProdTier productos={s.productos}/>
           </Acc>
 
@@ -1041,21 +1119,33 @@ function App(){
             <Acc title={`Sombras · ojos ${irisData.iris.toLowerCase()}`} icon={<span style={{lineHeight:0,display:"inline-flex",verticalAlign:"middle",transform:"scale(0.72)",transformOrigin:"center"}} dangerouslySetInnerHTML={{__html:IRIS_SVG[irisData.key]}}/>} open={true}>
               <div className="g2">
                 <div>
-                  <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#4ade80",marginBottom:".5rem"}}>✅ Potencian tu iris</p>
-                  <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".4rem"}}>
+                  <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#4ade80",marginBottom:".4rem"}}>✅ Potencian tu iris</p>
+                  <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",marginBottom:".6rem"}}>
+                    {(irisData.favHex||[]).map((col,i)=>(
+                      <div key={i} style={{width:32,height:32,borderRadius:7,background:col,border:"1px solid rgba(255,255,255,.12)",boxShadow:"0 2px 6px rgba(0,0,0,.3)",flexShrink:0}}/>
+                    ))}
+                  </div>
+                  <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".35rem"}}>
                     {irisData.fav.map((f,i)=>(
                       <li key={i} style={{display:"flex",gap:".6rem",fontSize:".82rem",color:"rgba(245,237,224,.82)",lineHeight:1.4}}>
-                        <span style={{color:"var(--gd)",flexShrink:0}}>→</span>{f}
+                        {irisData.favHex&&irisData.favHex[i]&&<div style={{width:12,height:12,borderRadius:3,background:irisData.favHex[i],flexShrink:0,marginTop:3}}/>}
+                        {f}
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#f87171",marginBottom:".5rem"}}>❌ Evitar</p>
-                  <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".4rem"}}>
+                  <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#f87171",marginBottom:".4rem"}}>❌ Evitar</p>
+                  <div style={{display:"flex",gap:".5rem",flexWrap:"wrap",marginBottom:".6rem"}}>
+                    {(irisData.evitarHex||[]).map((col,i)=>(
+                      <div key={i} style={{width:32,height:32,borderRadius:7,background:col,border:"2px solid rgba(248,113,113,.4)",boxShadow:"0 2px 6px rgba(0,0,0,.3)",flexShrink:0,opacity:.7}}/>
+                    ))}
+                  </div>
+                  <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".35rem"}}>
                     {irisData.evitar.map((f,i)=>(
                       <li key={i} style={{display:"flex",gap:".6rem",fontSize:".82rem",color:"rgba(245,237,224,.65)",lineHeight:1.4}}>
-                        <span style={{color:"#f87171",flexShrink:0}}>→</span>{f}
+                        {irisData.evitarHex&&irisData.evitarHex[i]&&<div style={{width:12,height:12,borderRadius:3,background:irisData.evitarHex[i],flexShrink:0,marginTop:3,opacity:.6}}/>}
+                        {f}
                       </li>
                     ))}
                   </ul>
@@ -1069,12 +1159,38 @@ function App(){
           <Acc title="Cabello & Color" icon="💇">
             <div className="g2">
               <div>
-                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#4ade80",marginBottom:".5rem"}}>✅ Tonos favorables</p>
-                <div style={{display:"flex",flexWrap:"wrap"}}>{s.cabello.favorables.map(c=><Pill key={c} t={c}/>)}</div>
+                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#4ade80",marginBottom:".4rem"}}>✅ Tonos favorables</p>
+                <div style={{display:"flex",gap:".45rem",flexWrap:"wrap",marginBottom:".5rem"}}>
+                  {(s.cabello.favorHex||[]).map((col,i)=>(
+                    <div key={i} style={{textAlign:"center"}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:col,border:"2px solid rgba(255,255,255,.15)",boxShadow:"0 2px 6px rgba(0,0,0,.4)"}}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap"}}>
+                  {s.cabello.favorables.map((c,i)=>(
+                    <span key={c} style={{display:"inline-flex",alignItems:"center",gap:".3rem",background:"rgba(200,169,126,.1)",border:"1px solid rgba(200,169,126,.2)",borderRadius:40,padding:".22rem .7rem",fontSize:".75rem",color:"rgba(245,237,224,.8)",margin:".2rem .2rem"}}>
+                      {s.cabello.favorHex&&s.cabello.favorHex[i]&&<span style={{width:8,height:8,borderRadius:"50%",background:s.cabello.favorHex[i],display:"inline-block",flexShrink:0}}/>}
+                      {c}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div>
-                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#f87171",marginBottom:".5rem"}}>❌ Evitar</p>
-                <div style={{display:"flex",flexWrap:"wrap"}}>{s.cabello.evitar.map(c=><Pill key={c} t={c}/>)}</div>
+                <p style={{fontSize:".68rem",textTransform:"uppercase",letterSpacing:".1em",color:"#f87171",marginBottom:".4rem"}}>❌ Evitar</p>
+                <div style={{display:"flex",gap:".45rem",flexWrap:"wrap",marginBottom:".5rem"}}>
+                  {(s.cabello.evitarHex||[]).map((col,i)=>(
+                    <div key={i} style={{width:32,height:32,borderRadius:"50%",background:col,border:"2px solid rgba(248,113,113,.3)",boxShadow:"0 2px 6px rgba(0,0,0,.4)",opacity:.65}}/>
+                  ))}
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap"}}>
+                  {s.cabello.evitar.map((c,i)=>(
+                    <span key={c} style={{display:"inline-flex",alignItems:"center",gap:".3rem",background:"rgba(248,113,113,.08)",border:"1px solid rgba(248,113,113,.2)",borderRadius:40,padding:".22rem .7rem",fontSize:".75rem",color:"rgba(245,237,224,.6)",margin:".2rem .2rem"}}>
+                      {s.cabello.evitarHex&&s.cabello.evitarHex[i]&&<span style={{width:8,height:8,borderRadius:"50%",background:s.cabello.evitarHex[i],display:"inline-block",flexShrink:0,opacity:.65}}/>}
+                      {c}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="sep"/>
@@ -1108,10 +1224,19 @@ function App(){
             <p style={{fontSize:".8rem",color:"var(--st)",marginBottom:"1rem"}}>El color opuesto en el círculo cromático neutraliza. Subtono cálido y frío usan distintos correctores.</p>
             {CORRECTORES.map(c=>(
               <div key={c.p} style={{background:"rgba(200,169,126,.04)",border:"1px solid var(--bd)",borderRadius:10,padding:".9rem",marginBottom:".65rem"}}>
-                <p style={{fontSize:".82rem",fontWeight:500,color:"var(--wt)",marginBottom:".5rem"}}>{c.i} {c.p}</p>
+                <div style={{display:"flex",alignItems:"center",gap:".8rem",marginBottom:".5rem"}}>
+                  <div style={{width:28,height:28,borderRadius:6,background:c.cancelaHex,border:"1px solid rgba(255,255,255,.1)",flexShrink:0,boxShadow:"0 2px 6px rgba(0,0,0,.3)"}}/>
+                  <p style={{fontSize:".82rem",fontWeight:500,color:"var(--wt)",margin:0}}>{c.i} {c.p}</p>
+                </div>
                 <div className="g2">
-                  <p style={{fontSize:".78rem",color:"rgba(245,237,224,.72)"}}><span style={{color:"var(--gd)"}}>Cálido:</span> {c.cal}</p>
-                  <p style={{fontSize:".78rem",color:"rgba(245,237,224,.72)"}}><span style={{color:"var(--gd)"}}>Frío:</span> {c.frio}</p>
+                  <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
+                    <div style={{width:24,height:24,borderRadius:5,background:c.calHex,border:"1px solid rgba(255,255,255,.1)",flexShrink:0}}/>
+                    <p style={{fontSize:".78rem",color:"rgba(245,237,224,.72)",margin:0}}><span style={{color:"var(--gd)"}}>Cálido:</span> {c.cal}</p>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
+                    <div style={{width:24,height:24,borderRadius:5,background:c.frioHex,border:"1px solid rgba(255,255,255,.1)",flexShrink:0}}/>
+                    <p style={{fontSize:".78rem",color:"rgba(245,237,224,.72)",margin:0}}><span style={{color:"var(--gd)"}}>Frío:</span> {c.frio}</p>
+                  </div>
                 </div>
                 <p style={{fontSize:".74rem",color:"var(--st)",marginTop:".4rem",fontStyle:"italic"}}>{c.u}</p>
               </div>
@@ -1265,9 +1390,8 @@ function App(){
   return null;
 }
 
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    const root=ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
   </script>
 </body>
 </html>
